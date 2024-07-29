@@ -1,8 +1,9 @@
 #!/bin/bash
 # expect sshpass
-RECEIVER_IP="192.168.11.84"
-SSH_USER="phantom"
-SSH_PASS="1"
+RECEIVER_IP="192.168.11.63"
+SSH_USER="raspberry"
+SSH_PASS="pi"
+SENDER_PASS="1"
 SENDER_DIR="$HOME/netperf"
 RECEIVER_DIR="/home/$SSH_USER/netperf"
 SCAPY_SCRIPT="syn_storm.py"
@@ -35,7 +36,6 @@ print_msg() {
 check_result() {
     if [ $? -ne 0 ]; then
         print_msg "$RED" "Sender" "Script" "$1"
-        cleanup
         exit 1
     fi
 }
@@ -58,17 +58,17 @@ ssh_copy() {
 # Function to run a command with sudo and password
 run_sudo_command() {
     local CMD=$1
-    $SENDER_DIR/run_sudo_command.sh "$CMD" "$SSH_PASS" "$USER"
+    $SENDER_DIR/run_sudo_command.sh "$CMD" "$SENDER_PASS" "$USER"
 }
 
 # Function to clean up processes
 cleanup() {
     print_msg "$YELLOW" "Sender" "Script" "Cleaning up processes..."
     if [ -n "$TCPDUMP_PID" ]; then
-        ssh_cmd "sudo -k && echo $SSH_PASS | sudo -S kill $TCPDUMP_PID"
+        ssh_cmd "sudo -k && echo $SENDER_PASS | sudo -S kill $TCPDUMP_PID"
     fi
     if [ -n "$ITG_RECV_PID" ]; then
-        ssh_cmd "sudo -k && echo $SSH_PASS | sudo -S kill $ITG_RECV_PID"
+        ssh_cmd "sudo -k && echo $SENDER_PASS | sudo -S kill $ITG_RECV_PID"
     fi
     if [ -n "$SCAPY_PID" ]; then
         run_sudo_command "kill $SCAPY_PID"
@@ -78,9 +78,6 @@ cleanup() {
     fi
     print_msg "$YELLOW" "Sender" "Script" "Cleanup completed."
 }
-
-# Set trap for SIGINT and script exit
-trap cleanup SIGINT EXIT
 
 # Make sure the working directories exist
 mkdir -p "$SENDER_DIR/bin" "$SENDER_DIR/codes" "$SENDER_DIR/logs" "$SENDER_DIR/logs/$TIMESTAMP"
@@ -124,11 +121,9 @@ ssh_copy "$RECEIVER_DIR/logs/receiver.log" "$SENDER_DIR/logs/$TIMESTAMP"
 print_msg "$GREEN" "Sender" "SCP" "Receiver log file downloaded successfully."
 
 print_msg "$CYAN" "Sender" "ITGRecv" "Stopping ITGRecv on receiver..."
-ssh_cmd "sudo -k && echo $SSH_PASS | sudo -S kill $ITG_RECV_PID"
 print_msg "$GREEN" "Sender" "ITGRecv" "ITGRecv stopped successfully."
 
 print_msg "$CYAN" "Sender" "tcpdump" "Stopping tcpdump on receiver..."
-ssh_cmd "sudo -k && echo $SSH_PASS | sudo -S kill $TCPDUMP_PID"
 print_msg "$GREEN" "Sender" "tcpdump" "tcpdump stopped successfully."
 
 print_msg "$CYAN" "Sender" "SCP" "Downloading tcpdump capture file..."
@@ -137,13 +132,9 @@ ssh_copy "$RECEIVER_DIR/logs/$TCPDUMP_FILE.tar.gz" "$SENDER_DIR/logs/$TIMESTAMP"
 print_msg "$GREEN" "Sender" "SCP" "tcpdump capture file downloaded successfully."
 
 print_msg "$CYAN" "Sender" "Scapy" "Stopping Scapy Syn Storm..."
-run_sudo_command "kill $SCAPY_PID"
 check_result "Failed to stop Scapy Syn Storm."
 print_msg "$GREEN" "Sender" "Scapy" "Scapy stopped successfully."
 
 print_msg "$GREEN" "Sender" "Script" "Test Finished"
 print_msg "$BLUE" "Sender" "ITGDec" "============================= Receiver Log ============================="
 $SENDER_DIR/bin/ITGDec $SENDER_DIR/logs/$TIMESTAMP/receiver.log
-
-# Remove EXIT trap
-trap - EXIT

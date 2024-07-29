@@ -4,10 +4,10 @@ import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 설정된 매개변수
-src_mac = "00:15:5d:14:d4:2c"
-src_ip = "172.19.228.203"
-dst_mac = "00:50:56:aa:a1:51"
-dst_ip = "192.168.11.84"
+src_mac = "00:15:5d:2f:0c:ce"
+src_ip = "172.20.77.55"
+dst_mac = "b8:27:eb:be:09:41"
+dst_ip = "192.168.11.63"
 
 # 자동 시드 설정
 random.seed()
