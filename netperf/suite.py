@@ -78,10 +78,3 @@ class Suite:
             print(f"Open ports discovered: {self.open_ports}")
             print(f"Sending SYN Storm packets to {self.dst_ip}...")
             self.send_syn_storm()
-
-def main(iface, src_mac, src_ip, dst_mac, dst_ip, test_type):
-    if test_type == "syn_storm":
-        test = Suite(iface, src_mac, src_ip, dst_mac, dst_ip)
-        test.run()
-    else:
-        print(f"Unknown test type: {test_type}")

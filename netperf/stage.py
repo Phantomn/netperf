@@ -1,10 +1,9 @@
 import logging
-import time
 import os
 from netperf.ssh_utils import SSHClient
 from netperf.net_info import get_nic_info, get_path
 from netperf.proc_manager import ProcessManager
-#from netperf.suite import 
+from netperf.suite import Suite
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,9 +16,8 @@ class Stage:
         self.receiver_ssh_id = receiver_ssh_id
         self.receiver_ssh_pw = receiver_ssh_pw
         self.test = test
-        self.timestamp = time.strftime("%Y%m%d_%H%M%S")
         self.tcpdump_file = f"{test}.pcap"
-        self.sender_dir = get_path()
+        self.sender_dir = get_path(None)
         os.mkaedirs(os.path.join(self.sender_dir, "logs"), exist_ok=True)
         
         self.client = None
@@ -59,6 +57,7 @@ class Stage:
             return False
         
         self.process_manager = ProcessManager(self.client)
+        self.suite = Suite(self.sender_nic, self.sender_mac, self.sender_ip, self.receiver_mac, self.receiver_ip)
         return True
     
     def run(self):
@@ -81,10 +80,8 @@ class Stage:
             return
         if not self.handle_stage(
             f"Starting {self.test} Test",
-            self.process_manager.run_process,
-            "scapy",
-            
-        )
+            self.suite.run):
+            return
         if not self.handle_stage(
             "Starting ITGSend for performance measurement",
             self.process_manager.run_process,
