@@ -105,12 +105,18 @@ class Stage:
             command=f"tar -P -zcvf {os.path.join(self.receiver_dir, 'logs', self.tcpdump_file)}.tar.gz {os.path.join(self.receiver_dir, 'logs', self.tcpdump_file)}"):
             return
         if not self.handle_stage(
-                "Downloading tcpdump capture file",
-                self.process_manager.run_process,
-                "download",
-                sftp_client=sftp_client,
-                remote_path=f"{os.path.join(self.receiver_dir, 'logs', self.tcpdump_file)}.tar.gz",
-                local_path=f"{os.path.join(self.sender_dir, 'logs', self.tcpdump_file)}.tar.gz"):
+            "Downloading tcpdump capture file",
+            self.process_manager.run_process,
+            "download",
+            sftp_client=sftp_client,
+            remote_path=f"{os.path.join(self.receiver_dir, 'logs', self.tcpdump_file)}.tar.gz",
+            local_path=f"{os.path.join(self.sender_dir, 'logs', self.tcpdump_file)}.tar.gz"):
+            return
+        if not self.handle_stage(
+            "Parsing Test result file",
+            self.process_manager.run_process,
+            "parse",
+            sender_dir=self.sender_dir):
             return
 
         self.handle_stage(

@@ -1,6 +1,5 @@
 import argparse
 from netperf.stage import Stage
-from netperf.parser import Parser
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Network performance test script.")

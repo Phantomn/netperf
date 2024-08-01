@@ -2,13 +2,15 @@ import subprocess
 import os
 import time
 import logging
-import glob
+from netperf.net_info import get_recent_dir
+from netperf.parser import Parser
 
 logger = logging.getLogger()
 
 class ProcessManager:
     def __init__(self, client):
         self.client = client
+        self.parser = None
     
     def run_process(self, process_type, **kwargs):
         if process_type == "tcpdump":
@@ -56,15 +58,14 @@ class ProcessManager:
         elif process_type == "parse":
             command = [
                 os.path.join(kwargs['sender_dir'], "bin", "ITGDec"),
-                os.path.join(self.get_dir(kwargs['sender_dir']), "receiver.log")
+                os.path.join(get_recent_dir(kwargs['sender_dir']), "receiver.log")
             ]
             try:
                 result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
                 if result.returncode != 0:
                     raise subprocess.CalledProcessError(result.returncode, command)
-                output = result.stdout
+                self.parser = Parser(result.stdout).extract_info()
                 pid = None
-                return output
             except subprocess.CalledProcessError as e:
                 logger.error(f"Failed to start ITGSend: {e}")
                 raise            
@@ -72,16 +73,3 @@ class ProcessManager:
             raise ValueError("Unknown process type")
         
         return pid
-    
-    def get_dir(self, sender_dir):
-        subdirs = glob.glob(os.path.join(sender_dir, "logs", "*/"))
-        dir_numbers = [int(os.path.basename(os.path.normpath(d))) for d in subdirs if os.path.basename(os.path.normpath(d)).isdigit()]
-        
-        max_dir_number = max(dir_numbers, default=0)
-        new_dir_number = max_dir_number + 1
-        new_dir_path = os.path.join(sender_dir, "logs", f"{new_dir_number:04d}")
-        
-        if os.path.exists(new_dir_path):
-            os.makedirs(new_dir_path)
-            
-        return new_dir_path
