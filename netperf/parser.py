@@ -2,7 +2,7 @@ import re
 import os
 import json
 import logging
-from netperf.net_info import get_recent_dir, get_path
+from net_info import get_recent_dir, get_path
 
 logger = logging.getLogger()
 

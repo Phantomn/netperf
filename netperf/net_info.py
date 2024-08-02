@@ -1,12 +1,19 @@
 import subprocess
 import os
 import glob
-import time
+import logging
+
+logger = logging.getLogger()
+
+def get_nic_ip():
+    nic = subprocess.getoutput("ip -o -4 route show to default | awk '{print $5}'")
+    ip = subprocess.getoutput(f"ip -o -4 addr show {nic} | awk '{{print $4}}'").split('/')[0]
+    return ip
 
 def get_nic_info(client, remote_flag=False):
     if remote_flag:
-        nic, _ = client.execute_command(client, "ip -o -4 route show to default | awk '{print $5}'", get_output=True)
-        mac, _ = client.execute_command(client, f"cat /sys/class/net/{nic}/address", get_output=True)
+        nic, _ = client.execute_command("ip -o -4 route show to default | awk '{print $5}'", get_output=True)
+        mac, _ = client.execute_command(f"cat /sys/class/net/{nic}/address", get_output=True)
     else:
         nic = subprocess.getoutput("ip -o -4 route show to default | awk '{print $5}'")
         mac = subprocess.getoutput(f"cat /sys/class/net/{nic}/address")
@@ -14,21 +21,24 @@ def get_nic_info(client, remote_flag=False):
 
 def get_path(client, remote_flag=False):
     if remote_flag:
-        path, _ = client.execute_command(client, "find /home -type d -name 'netperf'", get_output=True)
+        path, _ = client.execute_command("find /home -maxdepth 2 -type d -name 'netperf'", get_output=True)
         return path
     else:
-        path = subprocess.getoutput("find /home -type d -name 'netperf'")
+        path = subprocess.getoutput("find /home -maxdepth 2 -type d -name 'netperf'")
         return path
     
-def get_recent_dir(sender_dir):
-    timestamp = time.strftime("%Y%m%d")
+def get_recent_dir(sender_dir, timestamp):
     subdirs = glob.glob(os.path.join(sender_dir, "logs", timestamp, "*/"))
+        
     dir_numbers = [int(os.path.basename(os.path.normpath(d))) for d in subdirs if os.path.basename(os.path.normpath(d)).isdigit()]
-    
-    max_dir_number = max(dir_numbers, default=0)
-    new_dir_number = max_dir_number + 1
-    new_dir_path = os.path.join(subdirs, f"{new_dir_number:04d}")
-    
+
+    if not subdirs:
+        new_dir_path = os.path.join(sender_dir, "logs", timestamp, "0000")
+    else:
+        max_dir_number = max(dir_numbers, default=0)
+        new_dir_number = max_dir_number + 1
+        new_dir_path = os.path.join(sender_dir, "logs", timestamp, f"{new_dir_number:04d}") 
+            
     if os.path.exists(new_dir_path):
         os.makedirs(new_dir_path)
         

@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python 디버거: 인수가 있는 현재 파일",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${cwd}/netperf/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "1",
+                "192.168.11.63",
+                "raspberry",
+                "pi",
+                "syn_storm"
+            ]
+        }
+    ]
+}

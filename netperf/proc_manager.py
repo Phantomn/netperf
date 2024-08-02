@@ -1,27 +1,26 @@
 import subprocess
 import os
 import time
-import logging
-from netperf.net_info import get_recent_dir
-from netperf.parser import Parser
-
-logger = logging.getLogger()
+from net_info import get_recent_dir
+from parser import Parser
+from log_utils import Logger
 
 class ProcessManager:
     def __init__(self, client):
         self.client = client
         self.parser = None
+        self.logger = Logger.getLogger()
     
     def run_process(self, process_type, **kwargs):
         if process_type == "tcpdump":
             command = f"sudo -S nohup tcpdump -i {kwargs['iface']} -w {kwargs['receiver_dir']}/logs/{kwargs['tcpdump_file']} > /dev/null 2>&1 & echo $!"
-            stdin, stdout, stderr = self.client.execute_command(f"echo {kwargs['ssh_pass']} | {command}")
-            pid = stdout.read().decode().strip()
+            stdout, stderr = self.client.execute_command(f"echo {kwargs['ssh_pass']} | {command}", True)
+            pid = stdout
             time.sleep(2)
         elif process_type == "itgrecv":
             command = f"nohup {kwargs['receiver_dir']}/bin/ITGRecv > {kwargs['receiver_dir']}/logs/itgrecv.log 2>&1 & echo $!"
-            stdin, stdout, stderr = self.client.execute_command(command)
-            pid = stdout.read().decode().strip()
+            stdout, stderr = self.client.execute_command(command)
+            pid = stdout
             time.sleep(2)
         elif process_type == "itgsend":
             command = [
@@ -40,7 +39,7 @@ class ProcessManager:
                 else:
                     time.sleep(2)
             except subprocess.CalledProcessError as e:
-                logger.error(f"Failed to start ITGSend: {e}")
+                self.logger.error(f"Failed to start ITGSend: {e}")
                 raise
             pid = None
         elif process_type == "kill":
@@ -67,7 +66,7 @@ class ProcessManager:
                 self.parser = Parser(result.stdout).extract_info()
                 pid = None
             except subprocess.CalledProcessError as e:
-                logger.error(f"Failed to start ITGSend: {e}")
+                self.logger.error(f"Failed to start ITGSend: {e}")
                 raise            
         else:
             raise ValueError("Unknown process type")
