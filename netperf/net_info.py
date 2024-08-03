@@ -1,9 +1,6 @@
 import subprocess
 import os
 import glob
-import logging
-
-logger = logging.getLogger()
 
 def get_nic_ip():
     nic = subprocess.getoutput("ip -o -4 route show to default | awk '{print $5}'")

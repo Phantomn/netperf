@@ -32,11 +32,17 @@ class Stage:
         self.receiver_mac = None
         self.receiver_dir = None
         self.tcpdump_pid = None
+        self.tcpdump_priv = None
+        self.suite_priv = None
         self.itgrecv_pid = None
+        self.itgrecv_priv = None
+        self.itgsend_priv = None
+        self.itgsend_pid = None
         
     def handle_stage(self, stage_name, func, *args, **kwargs):
         try:
             result = func(*args, **kwargs)
+            self.logger.info(f"{stage_name} completed successfully.")
             return result
         except Exception as e:
             self.logger.error(f"Failed to complete {stage_name}: {e}")
@@ -69,13 +75,56 @@ class Stage:
         self.process_manager = ProcessManager(self.client)
         if not self.process_manager:
             return False
+        self.handle_stage(
+            "Setting Privilege of tcpdump",
+            self.client.execute_command,
+            f"echo {self.receiver_ssh_pw} | sudo -S setcap cap_net_raw,cap_net_admin=eip /usr/bin/tcpdump")
+        self.tcpdump_priv = self.handle_stage(
+            "Getting Privilege of tcpdump",
+            self.client.execute_command,
+            f"echo {self.receiver_ssh_pw} | sudo -S getcap /usr/bin/tcpdump")
+        if not self.tcpdump_priv:
+            self.logger.error(f"Failed get tcpdump privilege {self.tcpdump_priv}")
+            
         self.suite = Suite(self.sender_nic, self.sender_mac, self.sender_ip, self.receiver_mac, self.receiver_ip)
         if not self.suite:
             return False
+        self.suite_priv = self.handle_stage(
+            "Getting Privilege of scapy",
+            self.process_manager.run_process,
+            "priv",
+            executable="/usr/bin/python3",
+            capabilities="cap_net_raw,cap_net_admin=eip",
+            ssh_pass=self.sender_ssh_pw)
+        if not self.suite_priv:
+            self.logger.error(f"Failed get scapy privilege {self.suite_priv}")
+        self.handle_stage(
+            "Setting Privilege of ITGRecv",
+            self.client.execute_command,
+            f"echo {self.receiver_ssh_pw} | sudo -S setcap cap_net_raw,cap_net_admin=eip {self.receiver_dir}/bin/ITGRecv")
+        self.itgrecv_priv = self.handle_stage(
+            "Setting Privilege of ITGRecv",
+            self.client.execute_command,
+            f"echo {self.receiver_ssh_pw} | sudo -S getcap {self.receiver_dir}/bin/ITGRecv")
+        if not self.itgrecv_priv:
+            self.logger.error(f"Failed get ITGRecv privilege {self.itgrecv_priv}")
+        else:
+            self.logger.info(f"Capabilities for {self.receiver_dir}/bin/ITGRecv: cap_net_raw,cap_net_admin=eip")
+        self.itgsend_priv = self.handle_stage(
+            "Getting Privilege of ITGSend",
+            self.process_manager.run_process,
+            "priv",
+            executable=f"{self.sender_dir}/bin/ITGSend",
+            capabilities="cap_net_raw,cap_net_admin=eip",
+            ssh_pass=self.sender_ssh_pw)
+        if not self.itgsend_priv:
+            self.logger.error(f"Failed get ITGSend Privilege {self.itgsend_priv}")
+        
         return True
     
     def run(self):
         if not self.setup():
+            self.logger.error("Failed Setup Process")
             return
         self.tcpdump_pid = self.handle_stage(
             "Starting tcpdump on receiver",
@@ -86,27 +135,33 @@ class Stage:
             tcpdump_file=self.tcpdump_file,
             ssh_pass=self.receiver_ssh_pw)
         if not self.tcpdump_pid:
+            self.logger.error(f"Failed get tcpdump_pid {self.tcpdump_pid}")
             return
         self.itgrecv_pid = self.handle_stage(
             "Starting ITGRecv on receiver",
             self.process_manager.run_process,
             "itgrecv",
-            receiver_dir=self.receiver_dir)
+            receiver_dir=self.receiver_dir,
+            ssh_pass=self.receiver_ssh_pw)
         if not self.itgrecv_pid:
+            self.logger.error(f"Failed get itgrecv_pid {self.itgrecv_pid}")
             return
-        if not self.handle_stage(
-            f"Starting {self.test} Test",
-            self.suite.run):
-            return
-        if not self.handle_stage(
+        self.itgsend_pid = self.handle_stage(
             "Starting ITGSend for performance measurement",
             self.process_manager.run_process,
             "itgsend",
             receiver_ip=self.receiver_ip,
             sender_dir=self.sender_dir,
-            receiver_dir=self.receiver_dir):
+            receiver_dir=self.receiver_dir,
+            timestamp=self.timestamp)
+        if not self.itgsend_pid:
+            self.logger.error(f"Failed get itgsend_pid {self.itgsend_pid}")
             return
-        sftp_client = self.client.ssh_client.open_sftp()
+        if not self.handle_stage(
+            f"Starting {self.test} Test",
+            self.suite.run):
+            return
+        sftp_client = self.client.open_sftp()
         if not self.handle_stage(
             "Downloading receiver log file",
             self.process_manager.run_process,
@@ -132,9 +187,9 @@ class Stage:
             "Parsing Test result file",
             self.process_manager.run_process,
             "parse",
-            sender_dir=self.sender_dir):
+            sender_dir=self.sender_dir,
+            timestamp=self.timestamp):
             return
-
         self.handle_stage(
             "Cleaning up processes",
             self.process_manager.run_process,

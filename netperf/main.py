@@ -1,6 +1,7 @@
 import argparse
 from stage import Stage
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Network performance test script.")
     parser.add_argument("sender_ssh_pw", help="SSH password for the sender.")

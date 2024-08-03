@@ -1,15 +1,14 @@
 import re
 import os
 import json
-import logging
 from net_info import get_recent_dir, get_path
-
-logger = logging.getLogger()
+from log_utils import Logger
 
 class Parser:
     def __init__(self, log):
         self.log = log
         self.info = {}
+        self.logger = Logger.getLogger()
         
     def extract_info(self):
         from_ip_match = re.search(r'From (\d+\.\d+\.\d+\.\d+:\d+)', self.log)
@@ -56,4 +55,4 @@ class Parser:
         with open(output, 'w') as file:
             json.dump(self.info, file, indent=4)
             
-        logger.info(f"Analyze Results : {output}")
+        self.logger.info(f"Analyze Results : {output}")
