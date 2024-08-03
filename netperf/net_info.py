@@ -24,19 +24,19 @@ def get_path(client, remote_flag=False):
         path = subprocess.getoutput("find /home -maxdepth 2 -type d -name 'netperf'")
         return path
     
-def get_recent_dir(sender_dir, timestamp):
-    subdirs = glob.glob(os.path.join(sender_dir, "logs", timestamp, "*/"))
+def get_recent_dir(dirs, timestamp):
+    subdirs = glob.glob(os.path.join(dirs, "logs", timestamp, "*/"))
         
     dir_numbers = [int(os.path.basename(os.path.normpath(d))) for d in subdirs if os.path.basename(os.path.normpath(d)).isdigit()]
 
     if not subdirs:
-        new_dir_path = os.path.join(sender_dir, "logs", timestamp, "0000")
+        new_dir_path = os.path.join(dirs, "logs", timestamp, "0000")
     else:
         max_dir_number = max(dir_numbers, default=0)
         new_dir_number = max_dir_number + 1
-        new_dir_path = os.path.join(sender_dir, "logs", timestamp, f"{new_dir_number:04d}") 
+        new_dir_path = os.path.join(dirs, "logs", timestamp, f"{new_dir_number:04d}") 
             
     if os.path.exists(new_dir_path):
-        os.makedirs(new_dir_path)
+        os.makedirs(new_dir_path, exist_ok=True)
         
     return new_dir_path

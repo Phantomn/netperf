@@ -14,12 +14,12 @@ class ProcessManager:
     def run_process(self, process_type, **kwargs):
         pid = None
         if process_type == "tcpdump":
-            command = f"nohup tcpdump -i {kwargs['iface']} -w {kwargs['receiver_dir']}/logs/{kwargs['tcpdump_file']} > /dev/null 2>&1 & echo $!"
+            command = f"nohup tcpdump -i {kwargs['iface']} -w {os.path.join(get_recent_dir(kwargs['receiver_dir'], kwargs['timestamp']), kwargs['tcpdump_file'])} > /dev/null 2>&1 & echo $!"
             stdout, stderr = self.client.execute_command(command, True)
             pid = stdout
             time.sleep(2)
         elif process_type == "itgrecv":
-            command = f"nohup {kwargs['receiver_dir']}/bin/ITGRecv > {kwargs['receiver_dir']}/logs/itgrecv.log 2>&1 & echo $!"
+            command = f"nohup {kwargs['receiver_dir']}/bin/ITGRecv > {os.path.join(get_recent_dir(kwargs['receiver_dir'], kwargs['timestamp']), kwargs['name'])} 2>&1 & echo $!"
             stdout, stderr = self.client.execute_command(command, True)
             pid = stdout
             time.sleep(2)
@@ -44,7 +44,8 @@ class ProcessManager:
             self.client.execute_command(command)
             pid = None
         elif process_type == "download":
-            self.logger.info(f"{kwargs['sftp_client']}.get({kwargs['remote_path']}, {kwargs['local_path']})")
+            self.logger.info(f"Remote Path : {kwargs['remote_path']}")
+            self.logger.info(f"Local Path : {kwargs['local_path']}")
             kwargs['sftp_client'].get(kwargs['remote_path'], kwargs['local_path'])
             pid = None
         elif process_type == "cleanup":

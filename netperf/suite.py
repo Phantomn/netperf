@@ -6,7 +6,7 @@ import threading
 from log_utils import Logger
 
 class Suite:
-    def __init__(self, iface, src_mac, src_ip, dst_mac, dst_ip, duration=120, rate_limit=14880):
+    def __init__(self, iface, src_mac, src_ip, dst_mac, dst_ip, duration=5, rate_limit=14880):
         self.iface = iface
         self.src_mac = src_mac
         self.src_ip = src_ip
@@ -37,7 +37,7 @@ class Suite:
             self.logger.error(f"Error scanning port {port}: {e}")
 
     def discover_open_ports(self):
-        port_range = range(1, 65535)
+        port_range = range(7000, 9000)
         with ThreadPoolExecutor(max_workers=100) as executor:
             futures = {executor.submit(self.scan_port, port) for port in port_range}
             for future in as_completed(futures):
@@ -62,8 +62,7 @@ class Suite:
                 for adj_port in (port, port - 1, port + 1):
                     if 1 <= adj_port <= 65535:
                         elapsed_time = time.time() - start_time
-                        remaining_time = max(0, 1 - elapsed_time % 1)
-                        self.logger.info(f"{elapsed_time} {remaining_time}")
+                        self.logger.info(f"{int(elapsed_time)}")
                         
                         pkt = self.gen_packet(port)
                         sendp(pkt, iface=self.iface)
