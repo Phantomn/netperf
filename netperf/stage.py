@@ -60,24 +60,24 @@ class Stage:
             f"echo {self.receiver_ssh_pw} | sudo -S getcap {path}")
         
         if privilege:
-            self.logger.debug(f"Capabilities for {path}: {capabilities}")
+            self.logger.info(f"Privileges for {path}: {capabilities}")
         else:
             self.logger.error(f"Failed get {name} privilege")
         self.privileges[name] = privilege
         
     def setup_privileges(self):
         capabilities="cap_net_raw,cap_net_admin=eip"
-        self.set_privileges("tcpdump", "/usr/bin/tcpdump", capabilities)
-        self.set_privileges("ITGRecv", f"{self.receiver_dir}/bin/ITGRecv", capabilities)
-        self.set_privileges("scapy", "/usr/bin/python3", capabilities)
-        self.set_privileges("ITGSend", f"{self.sender_dir}/bin/ITGSend", capabilities)
-    
+        tools = ["tcpdump", "ITGRecv", "scapy", "ITGSend"]
+        paths = ["/usr/bin/tcpdump", f"{self.receiver_dir}/bin/ITGRecv", "/usr/bin/python3", f"{self.sender_dir}/bin/ITGSend"]
+        
+        for tool, path in zip(tools, paths):
+            self.set_privileges(tool, path, capabilities)
+            
     def run_process(self, process_type, **kwargs):
         pid = self.handle_stage(
             f"Starting {process_type} on receiver",
             self.process_manager.run_process,
-            process_type,
-            **kwargs)
+            process_type,**kwargs)
         if pid is None:
             self.logger.error(f"Failed to start {process_type}")
         return pid
