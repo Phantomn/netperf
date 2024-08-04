@@ -42,7 +42,7 @@ class Stage:
     def handle_stage(self, process_type, func, *args, **kwargs):
         try:
             result = func(*args, **kwargs)
-            self.logger.info(f"{process_type} completed successfully.")
+            self.logger.debug(f"{process_type} completed successfully.")
             return result
         except Exception as e:
             self.logger.error(f"Failed to complete {process_type}: {e}")
@@ -60,7 +60,7 @@ class Stage:
             f"echo {self.receiver_ssh_pw} | sudo -S getcap {path}")
         
         if privilege:
-            self.logger.info(f"Capabilities for {path}: {capabilities}")
+            self.logger.debug(f"Capabilities for {path}: {capabilities}")
         else:
             self.logger.error(f"Failed get {name} privilege")
         self.privileges[name] = privilege
@@ -170,4 +170,4 @@ class Stage:
             sender_log_path=self.sender_log_path):
             return
         
-        self.logger.info("Successfully Test Finish")
+        self.logger.debug("Successfully Test Finish")

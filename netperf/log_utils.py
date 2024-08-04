@@ -51,7 +51,7 @@ class Logger:
     
     def __init__(self):
         self.logger = logging.getLogger(Logger._logger_name)
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
         
         if not self.logger.handlers:
             # Console handler with colored output
