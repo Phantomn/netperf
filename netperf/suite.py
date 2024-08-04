@@ -32,20 +32,26 @@ class Suite:
             if response and response.haslayer(TCP) and response.getlayer(TCP).flags == 0x12:
                 with self.open_ports_lock:
                     self.open_ports.append(port)
-                    self.logger.info(f"Scan port: {port}")
                 send(IP(dst=self.dst_ip) / TCP(dport=port, flags='R'))
         except Exception as e:
             self.logger.error(f"Error scanning port {port}: {e}")
 
     def discover_open_ports(self):
         port_range = range(7000, 9000)
-        with ThreadPoolExecutor(max_workers=100) as executor:
-            futures = {executor.submit(self.scan_port, port) for port in port_range}
-            for future in as_completed(futures):
-                try:
-                    future.result()
-                except Exception as e:
-                    self.logger.error(f"Error in port scanning task: {e}")
+        total_ports = len(port_range)
+
+        # 진행률 표시줄 초기화
+        with tqdm(total=total_ports, unit="port", desc="Scanning Ports", ncols=100) as progress_bar:
+            with ThreadPoolExecutor(max_workers=100) as executor:
+                futures = {executor.submit(self.scan_port, port): port for port in port_range}
+                for future in as_completed(futures):
+                    try:
+                        future.result()
+                    except Exception as e:
+                        self.logger.error(f"Error in port scanning task: {e}")
+                    finally:
+                        # 진행률 표시줄 업데이트
+                        progress_bar.update(1)
 
     def gen_packet(self, dst_port):
         eth_frame = Ether(src=self.src_mac, dst=self.dst_mac)
