@@ -5,9 +5,10 @@ from net_info import get_recent_dir, get_path
 from log_utils import Logger
 
 class Parser:
-    def __init__(self, log):
+    def __init__(self, log, path):
         self.log = log
         self.info = {}
+        self.path = path
         self.logger = Logger.getLogger()
         
     def extract_info(self):
@@ -51,8 +52,13 @@ class Parser:
         self.info['throughput_kbps'] = throughput_bps / 1000
         self.info['threshold_kbps'] = threshold_bps / 1000
         
-        output = os.path.join(get_recent_dir(get_path(None)), "results.json")
+        output = os.path.join(self.path, "results.json")
         with open(output, 'w') as file:
             json.dump(self.info, file, indent=4)
             
-        self.logger.info(f"Analyze Results : {output}")
+        self.logger.info(f"Analyze Results: {output}")
+        self.logger.info(f"Throughput(kbps): {self.info['throughput_kbps']}, 결과: {self.info['is_throughput']}")
+        self.logger.info(f"Latency: {self.info['average_delay'] * 1000}, 결과: {self.info['is_latency']}")
+        self.logger.info(f"Frame Loss: {packet_loss_rate}, 결과: {self.info['is_frame_loss']}")
+        if self.info['is_throughput'] or self.info['is_latency'] or self.info['is_frame_loss'] in "충족하지 않음":
+            self.logger.info("최종 결과: 실패")

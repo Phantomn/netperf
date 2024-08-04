@@ -1,5 +1,6 @@
 import os
 import time
+from tqdm import tqdm
 from ssh_utils import SSHClient
 from net_info import get_nic_info, get_path, get_recent_dir, get_nic_ip
 from proc_manager import ProcessManager
@@ -29,14 +30,8 @@ class Stage:
         self.privileges = {}
         
         self.sender_log_path = get_recent_dir(self.sender_dir, self.timestamp)
-        self.receiver_log_path = get_recent_dir(self.receiver_dir, self.timestamp)
         if os.path.exists(self.sender_log_path):
             os.makedirs(self.sender_log_path, exist_ok=True)
-        if os.path.exists(self.receiver_log_path):
-            self.handle_stage(
-                f"Create Directory on receiver: {self.receiver_log_path}",
-                self.client.execute_command,
-                f"mkdir -p {self.receiver_log_path}")
             
         self.setup_logging()
     
@@ -44,13 +39,13 @@ class Stage:
         Logger.configure(self.sender_log_path, self.test)
         self.logger = Logger.getLogger()
         
-    def handle_stage(self, stage_name, func, *args, **kwargs):
+    def handle_stage(self, process_type, func, *args, **kwargs):
         try:
             result = func(*args, **kwargs)
-            self.logger.info(f"{stage_name} completed successfully.")
+            self.logger.info(f"{process_type} completed successfully.")
             return result
         except Exception as e:
-            self.logger.error(f"Failed to complete {stage_name}: {e}")
+            self.logger.error(f"Failed to complete {process_type}: {e}")
             return None
    
     def set_privileges(self, name, path, capabilities):
@@ -89,22 +84,39 @@ class Stage:
     
     def download_file(self, sftp_client, remote_path, local_path):
         try:
-            self.logger.info(f"{remote_path}, {local_path}")
-            sftp_client.get(remote_path, local_path)
+            file_size = sftp_client.stat(remote_path).st_size
+            with tqdm(total=file_size, unit='B', unit_scale=True, desc=os.path.basename(local_path)) as progress:
+                with sftp_client.file(remote_path, 'rb') as remote_file:
+                    with open(local_path, 'wb') as local_file:
+                        while True:
+                            data = remote_file.read(32768)
+                            if not data:
+                                break
+                            local_file.write(data)
+                            progress.update(len(data))
             self.logger.info(f"Downloaded file from {remote_path} to {local_path}")
         except Exception as e:
             self.logger.error(f"Failed to download file: {e}")
-    
-    def archive_and_download(self, sftp_client, file_name):
-        if self.handle_stage(
-            "Archiving tcpdump capture file",
-            self.client.execute_command,
-            command=f"tar -P -zcvf {os.path.join(self.receiver_log_path, file_name)}.tar.gz {os.path.join(self.receiver_log_path, file_name)}"
-            ):
-            self.download_file(
-                sftp_client,
-                f"{os.path.join(self.receiver_log_path, file_name)}.tar.gz",
-                f"{os.path.join(self.sender_log_path, file_name)}.tar.gz")
+
+    def archive_and_download(self, sftp_client, file_names):
+        for file_name in file_names:
+            if self.handle_stage(
+                f"Archiving file {file_name}",
+                self.client.execute_command,
+                command=f"tar -C {os.path.join(self.receiver_dir, 'logs')} -zcvf {os.path.join(self.receiver_dir, 'logs', file_name)}.tar.gz {file_name}"):
+                self.download_file(
+                    sftp_client,
+                    f"{os.path.join(self.receiver_dir, 'logs', file_name)}.tar.gz",
+                    f"{os.path.join(self.sender_log_path, file_name)}.tar.gz")
+                if self.handle_stage(
+                    f"Decompress file {file_name}",
+                    self.process_manager.run_process,
+                    "decomp",
+                    path=self.sender_log_path,
+                    file_name=file_name):
+                    self.logger.error(f"Failed Decompress file {file_name}")
+                    self.cleanup_processes()
+                
             
     def cleanup_processes(self):
         self.handle_stage(
@@ -130,24 +142,32 @@ class Stage:
             name="itgrecv.log")
         self.pids['itgsend'] = self.run_process(
             "itgsend",
-            receiver_ip=self.receiver_ip,
             sender_dir=self.sender_dir,
-            receiver_dir=self.receiver_dir,
-            timestamp=self.timestamp)
+            receiver_ip=self.receiver_ip,
+            sender_log_path=self.sender_log_path,
+            receiver_dir=self.receiver_dir)
         
         if not self.handle_stage(
             f"Starting {self.test} Test",
             self.suite.run):
             return
-        
+        self.cleanup_processes()
         sftp_client = self.client.open_sftp()
-        self.download_file(
-            sftp_client,
-            os.path.join(self.receiver_log_path, "receiver.log"),
-            os.path.join(self.sender_log_path, "receiver.log"))
-        self.archive_and_download(sftp_client, self.tcpdump_file)
+        download_file = [
+            "receiver.log",
+            self.tcpdump_file
+        ]
+        self.archive_and_download(sftp_client, download_file)
 
         self.cleanup_processes()
-        
         self.client.close()
+        
+        if not self.handle_stage(
+            f"Parsing {self.test} Test",
+            self.process_manager.run_process,
+            "parse",
+            sender_dir=self.sender_dir,
+            sender_log_path=self.sender_log_path):
+            return
+        
         self.logger.info("Successfully Test Finish")

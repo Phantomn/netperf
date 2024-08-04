@@ -1,3 +1,4 @@
+from tqdm import tqdm
 from scapy.all import Ether, IP, TCP, sr1, send, sendp, conf
 import time
 import random
@@ -56,23 +57,25 @@ class Suite:
     def perform_test(self):
         start_time = time.time()
         count = 0
-        
-        while time.time() - start_time < self.duration:
-            for port in self.open_ports:
-                for adj_port in (port, port - 1, port + 1):
-                    if 1 <= adj_port <= 65535:
-                        elapsed_time = time.time() - start_time
-                        self.logger.info(f"{int(elapsed_time)}")
-                        
-                        pkt = self.gen_packet(port)
-                        sendp(pkt, iface=self.iface)
-                        count += 1
-                
-                        if count >= self.rate_limit:
-                            elapsed_time = time.time() - start_time
-                            remaining_time = max(0, 1 - elapsed_time % 1)
-                            time.sleep(remaining_time)
-                            count = 0
+
+        # 진행률 표시줄 초기화
+        with tqdm(total=self.duration, unit="s", desc="Performing Test", ncols=100, leave=False) as progress_bar:
+            while time.time() - start_time < self.duration:
+                elapsed_time = int(time.time() - start_time)
+                progress_bar.update(elapsed_time - progress_bar.n)
+
+                for port in self.open_ports:
+                    for adj_port in (port, port - 1, port + 1):
+                        if 1 <= adj_port <= 65535:
+                            pkt = self.gen_packet(port)
+                            sendp(pkt, iface=self.iface)
+                            count += 1
+
+                            if count >= self.rate_limit:
+                                elapsed_time = time.time() - start_time
+                                remaining_time = max(0, 1 - elapsed_time % 1)
+                                time.sleep(remaining_time)
+                                count = 0
         return True
 
     def run(self):

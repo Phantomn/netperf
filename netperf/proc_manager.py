@@ -14,12 +14,12 @@ class ProcessManager:
     def run_process(self, process_type, **kwargs):
         pid = None
         if process_type == "tcpdump":
-            command = f"nohup tcpdump -i {kwargs['iface']} -w {os.path.join(get_recent_dir(kwargs['receiver_dir'], kwargs['timestamp']), kwargs['tcpdump_file'])} > /dev/null 2>&1 & echo $!"
+            command = f"nohup tcpdump -i {kwargs['iface']} -w {os.path.join(kwargs['receiver_dir'], 'logs', kwargs['tcpdump_file'])} > /dev/null 2>&1 & echo $!"
             stdout, stderr = self.client.execute_command(command, True)
             pid = stdout
             time.sleep(2)
         elif process_type == "itgrecv":
-            command = f"nohup {kwargs['receiver_dir']}/bin/ITGRecv > {os.path.join(get_recent_dir(kwargs['receiver_dir'], kwargs['timestamp']), kwargs['name'])} 2>&1 & echo $!"
+            command = f"nohup {kwargs['receiver_dir']}/bin/ITGRecv > {os.path.join(kwargs['receiver_dir'], 'logs', kwargs['name'])} 2>&1 & echo $!"
             stdout, stderr = self.client.execute_command(command, True)
             pid = stdout
             time.sleep(2)
@@ -30,8 +30,8 @@ class ProcessManager:
                 "-a", kwargs['receiver_ip'],
                 "-C", "14880",
                 "-t", "120000",
-                "-l", os.path.join(get_recent_dir(kwargs['sender_dir'], kwargs['timestamp']), "sender.log"),
-                "-x", os.path.join(get_recent_dir(kwargs['receiver_dir'], kwargs['timestamp']), "receiver.log"),
+                "-l", os.path.join(kwargs['sender_log_path'], "sender.log"),
+                "-x", os.path.join(kwargs['receiver_dir'], 'logs', "receiver.log")
             ]
             try:
                 pid = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -48,6 +48,16 @@ class ProcessManager:
             self.logger.info(f"Local Path : {kwargs['local_path']}")
             kwargs['sftp_client'].get(kwargs['remote_path'], kwargs['local_path'])
             pid = None
+        elif process_type == "decomp":
+            try:
+                command=f"tar -C {kwargs['path']} -zxvf {os.path.join(kwargs['path'], kwargs['file_name'])}.tar.gz"
+                result = subprocess.run(command, shell=True, text=True, capture_output=True)
+                if result.returncode != 0:
+                    raise subprocess.CalledProcessError(result.returncode, command)
+                pid = None
+            except subprocess.CalledProcessError as e:
+                self.logger.error(f"Failed to Decompress {kwargs['file_name']}, {e}")
+                raise
         elif process_type == "cleanup":
             for pid in kwargs['processes']:
                 if pid:
@@ -56,13 +66,13 @@ class ProcessManager:
         elif process_type == "parse":
             command = [
                 os.path.join(kwargs['sender_dir'], "bin", "ITGDec"),
-                os.path.join(get_recent_dir(kwargs['sender_dir'], kwargs['timestamp']), "receiver.log")
+                os.path.join(kwargs['sender_log_path'], "receiver.log")
             ]
             try:
                 result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
                 if result.returncode != 0:
                     raise subprocess.CalledProcessError(result.returncode, command)
-                self.parser = Parser(result.stdout).extract_info()
+                self.parser = Parser(result.stdout, kwargs['sender_log_path']).extract_info()
                 pid = None
             except subprocess.CalledProcessError as e:
                 self.logger.error(f"Failed to start ITGSend: {e}")
