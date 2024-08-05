@@ -15,5 +15,8 @@ class SSHClient:
         
         return None, None
     
+    def open_sftp(self):
+        return self.client.open_sftp()
+    
     def close(self):
         self.client.close()

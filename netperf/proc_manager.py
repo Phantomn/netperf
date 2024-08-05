@@ -12,14 +12,15 @@ class ProcessManager:
         self.logger = Logger.getLogger()
     
     def run_process(self, process_type, **kwargs):
+        pid = None
         if process_type == "tcpdump":
-            command = f"sudo -S nohup tcpdump -i {kwargs['iface']} -w {kwargs['receiver_dir']}/logs/{kwargs['tcpdump_file']} > /dev/null 2>&1 & echo $!"
-            stdout, stderr = self.client.execute_command(f"echo {kwargs['ssh_pass']} | {command}", True)
+            command = f"nohup tcpdump -i {kwargs['iface']} -w {os.path.join(kwargs['receiver_dir'], 'logs', kwargs['tcpdump_file'])} > /dev/null 2>&1 & echo $!"
+            stdout, stderr = self.client.execute_command(command, True)
             pid = stdout
             time.sleep(2)
         elif process_type == "itgrecv":
-            command = f"nohup {kwargs['receiver_dir']}/bin/ITGRecv > {kwargs['receiver_dir']}/logs/itgrecv.log 2>&1 & echo $!"
-            stdout, stderr = self.client.execute_command(command)
+            command = f"nohup {kwargs['receiver_dir']}/bin/ITGRecv > {os.path.join(kwargs['receiver_dir'], 'logs', kwargs['name'])} 2>&1 & echo $!"
+            stdout, stderr = self.client.execute_command(command, True)
             pid = stdout
             time.sleep(2)
         elif process_type == "itgsend":
@@ -29,26 +30,34 @@ class ProcessManager:
                 "-a", kwargs['receiver_ip'],
                 "-C", "14880",
                 "-t", "120000",
-                "-l", os.path.join(kwargs['sender_dir'], "logs", "sender.log"),
-                "-x", os.path.join(kwargs['receiver_dir'], "logs", "receiver.log")
+                "-l", os.path.join(kwargs['sender_log_path'], "sender.log"),
+                "-x", os.path.join(kwargs['receiver_dir'], 'logs', "receiver.log")
             ]
             try:
-                result = subprocess.run(command, check=True)
-                if result.returncode != 0:
-                    raise subprocess.CalledProcessError(result.returncode, command)
-                else:
-                    time.sleep(2)
-            except subprocess.CalledProcessError as e:
+                pid = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                time.sleep(2)
+            except Exception as e:
                 self.logger.error(f"Failed to start ITGSend: {e}")
                 raise
-            pid = None
         elif process_type == "kill":
-            command = f"sudo -S kill {kwargs['pid']}"
-            self.client.execute_command(f"echo {kwargs['ssh_pass']} | {command}")
+            command = f"kill {kwargs['pid']}"
+            self.client.execute_command(command)
             pid = None
         elif process_type == "download":
+            self.logger.info(f"Remote Path : {kwargs['remote_path']}")
+            self.logger.info(f"Local Path : {kwargs['local_path']}")
             kwargs['sftp_client'].get(kwargs['remote_path'], kwargs['local_path'])
             pid = None
+        elif process_type == "decomp":
+            try:
+                command=f"tar -C {kwargs['path']} -zxvf {os.path.join(kwargs['path'], kwargs['file_name'])}.tar.gz"
+                result = subprocess.run(command, shell=True, text=True, capture_output=True)
+                if result.returncode != 0:
+                    raise subprocess.CalledProcessError(result.returncode, command)
+                pid = None
+            except subprocess.CalledProcessError as e:
+                self.logger.error(f"Failed to Decompress {kwargs['file_name']}, {e}")
+                raise
         elif process_type == "cleanup":
             for pid in kwargs['processes']:
                 if pid:
@@ -57,18 +66,38 @@ class ProcessManager:
         elif process_type == "parse":
             command = [
                 os.path.join(kwargs['sender_dir'], "bin", "ITGDec"),
-                os.path.join(get_recent_dir(kwargs['sender_dir']), "receiver.log")
+                os.path.join(kwargs['sender_log_path'], "receiver.log")
             ]
             try:
                 result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
                 if result.returncode != 0:
                     raise subprocess.CalledProcessError(result.returncode, command)
-                self.parser = Parser(result.stdout).extract_info()
+                self.parser = Parser(result.stdout, kwargs['sender_log_path']).extract_info()
                 pid = None
             except subprocess.CalledProcessError as e:
                 self.logger.error(f"Failed to start ITGSend: {e}")
-                raise            
+                raise
+        elif process_type == "priv":
+            executable = os.path.realpath(kwargs['executable'])
+            if not executable:
+                self.logger.error("No executable provided for 'priv' operation.")
+                return None
+            try:
+                command = f"sudo -S setcap {kwargs['capabilities']} {executable}"
+                result = subprocess.run(command, shell=True, input=f"{kwargs['ssh_pass']}\n", text=True, capture_output=True)
+                print(result.stderr.strip())
+                command = f"sudo -S getcap {executable}"
+                result = subprocess.run(command, shell=True, input=f"{kwargs['ssh_pass']}\n", text=True, capture_output=True)
+                priv = result.stdout.strip()
+                if priv:
+                   self.logger.info(f"Capabilities for {executable}: {kwargs['capabilities']}")
+                   return priv
+                else:
+                    self.logger.error("Failed get privilege")
+            except subprocess.CalledProcessError as e:
+                self.logger.error(f"Failed to capabilities on {executable}: {e}")
+            pid = None
         else:
-            raise ValueError("Unknown process type")
+            raise ValueError(f"Unknown process type {process_type}")
         
         return pid
