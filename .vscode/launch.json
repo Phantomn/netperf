@@ -8,10 +8,11 @@
             "program": "${cwd}/netperf/main.py",
             "console": "integratedTerminal",
             "args": [
+                "x64",
                 "1",
-                "192.168.219.166",
-                "raspberry",
-                "pi",
+                "192.168.11.64",
+                "phantom",
+                "1",
                 "syn_storm"
             ]
         }

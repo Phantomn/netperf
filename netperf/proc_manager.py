@@ -1,9 +1,8 @@
 import subprocess
 import os
 import time
-from net_info import get_recent_dir
+from util import Logger
 from parser import Parser
-from log_utils import Logger
 
 class ProcessManager:
     def __init__(self, client):
@@ -41,13 +40,25 @@ class ProcessManager:
                 raise
         elif process_type == "kill":
             command = f"kill {kwargs['pid']}"
-            self.client.execute_command(command)
+            try:
+                self.client.execute_command(command)
+            except Exception as e:
+                self.logger.error(f"Failed to kill {kwargs['pid']}")
             pid = None
-        elif process_type == "download":
-            self.logger.info(f"Remote Path : {kwargs['remote_path']}")
-            self.logger.info(f"Local Path : {kwargs['local_path']}")
-            kwargs['sftp_client'].get(kwargs['remote_path'], kwargs['local_path'])
-            pid = None
+        elif process_type == "sftp":
+            try:
+                self.logger.debug(f"Remote Path : {kwargs['remote_path']}")
+                self.logger.debug(f"Local Path : {kwargs['local_path']}")
+                self.logger.debug(kwargs['action'])
+                if kwargs['action'] == "download":          
+                    kwargs['sftp_client'].get(kwargs['remote_path'], kwargs['local_path'])
+                else:
+                    kwargs['sftp_client'].put(kwargs['local_path'], kwargs['remote_path'])
+                pid = None
+            except Exception as e:
+                self.logger.error(f"Failed to {kwargs['action']} file: {e}")
+                pid = None
+                raise
         elif process_type == "decomp":
             try:
                 command=f"tar -C {kwargs['path']} -zxvf {os.path.join(kwargs['path'], kwargs['file_name'])}.tar.gz"
@@ -60,8 +71,11 @@ class ProcessManager:
                 raise
         elif process_type == "cleanup":
             for pid in kwargs['processes']:
-                if pid:
-                    self.run_process("kill", pid=pid, ssh_pass=kwargs['ssh_pass'])
+                try:
+                    if pid:
+                        self.run_process("kill", pid=pid, ssh_pass=kwargs['ssh_pass'])
+                except Exception as e:
+                    self.logger.error(f"Failed kill to {pid}")
             pid = None
         elif process_type == "parse":
             command = [
@@ -75,7 +89,7 @@ class ProcessManager:
                 self.parser = Parser(result.stdout, kwargs['sender_log_path']).extract_info()
                 pid = None
             except subprocess.CalledProcessError as e:
-                self.logger.error(f"Failed to start ITGSend: {e}")
+                self.logger.error(f"Failed to parse {kwargs['sender_log_path']}/receiver.log: {e}")
                 raise
         elif process_type == "priv":
             executable = os.path.realpath(kwargs['executable'])
@@ -83,17 +97,18 @@ class ProcessManager:
                 self.logger.error("No executable provided for 'priv' operation.")
                 return None
             try:
-                command = f"sudo -S setcap {kwargs['capabilities']} {executable}"
-                result = subprocess.run(command, shell=True, input=f"{kwargs['ssh_pass']}\n", text=True, capture_output=True)
-                print(result.stderr.strip())
-                command = f"sudo -S getcap {executable}"
-                result = subprocess.run(command, shell=True, input=f"{kwargs['ssh_pass']}\n", text=True, capture_output=True)
-                priv = result.stdout.strip()
-                if priv:
-                   self.logger.info(f"Capabilities for {executable}: {kwargs['capabilities']}")
-                   return priv
+                if kwargs['is_remote']:
+                    command = f"echo {kwargs['ssh_pass']} | sudo -S setcap {kwargs['capabilities']} {executable}"
+                    stdout, _ = self.client.execute_command(command, False)
+                    command = f"echo {kwargs['ssh_pass']} | sudo -S getcap {executable}"
+                    priv, _ = self.client.execute_command(command, get_output=True)
                 else:
-                    self.logger.error("Failed get privilege")
+                    command = f"sudo -S setcap {kwargs['capabilities']} {executable}"
+                    result = subprocess.run(command, shell=True, input=f"{kwargs['ssh_pass']}\n", text=True, capture_output=True)
+                    command = f"sudo -S getcap {executable}"
+                    result = subprocess.run(command, shell=True, input=f"{kwargs['ssh_pass']}\n", text=True, capture_output=True)
+                    priv = result.stdout.strip()
+                return priv
             except subprocess.CalledProcessError as e:
                 self.logger.error(f"Failed to capabilities on {executable}: {e}")
             pid = None

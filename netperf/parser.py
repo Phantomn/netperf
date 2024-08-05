@@ -1,8 +1,7 @@
 import re
 import os
 import json
-from net_info import get_recent_dir, get_path
-from log_utils import Logger
+from util import Logger
 
 class Parser:
     def __init__(self, log, path):
@@ -57,8 +56,8 @@ class Parser:
             json.dump(self.info, file, indent=4)
             
         self.logger.info(f"Analyze Results: {output}")
-        self.logger.info(f"Throughput(kbps): {self.info['throughput_kbps']}, 결과: {self.info['is_throughput']}")
-        self.logger.info(f"Latency: {self.info['average_delay'] * 1000}, 결과: {self.info['is_latency']}")
-        self.logger.info(f"Frame Loss: {packet_loss_rate}, 결과: {self.info['is_frame_loss']}")
+        self.logger.info(f"Throughput(kbps): {self.info['throughput_kbps']:.02f}, 결과: {self.info['is_throughput']}")
+        self.logger.info(f"Latency: {(self.info['average_delay'] * 1000):.02f}, 결과: {self.info['is_latency']}")
+        self.logger.info(f"Frame Loss: {packet_loss_rate:.02f}, 결과: {self.info['is_frame_loss']}")
         if self.info['is_throughput'] or self.info['is_latency'] or self.info['is_frame_loss'] in "충족하지 않음":
             self.logger.info("최종 결과: 실패")
