@@ -35,7 +35,7 @@ class Stage:
     
     def setup_logging(self):
         import logging
-        Logger.configure(self.sender_log_path, self.test, logging.INFO)
+        Logger.configure(self.sender_log_path, self.test, logging.DEBUG)
         self.logger = Logger.getLogger()
     
     def setup(self):
