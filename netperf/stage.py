@@ -104,7 +104,6 @@ class Stage:
                 self.logger.error(f"Invalid action: {action}")
                 return
 
-            # Determine the file size for tqdm and open files
             if action == "download":
                 file_size = sftp_client.stat(remote_path).st_size
                 remote_file = sftp_client.file(remote_path, 'rb')
