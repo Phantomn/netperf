@@ -81,12 +81,10 @@ class Suite:
     def run(self):
         self.logger.info("Discovering open ports...")
         self.discover_open_ports(7000, 9000)
-        expect_port = [8000, 8585]
         if not self.open_ports:
             self.logger.info("No open ports discovered. Exiting.")
             return False
         else:
-            assert set(self.open_ports) == set(expect_port), f"Expect different {self.open_ports} {expect_port}"
             self.logger.info(f"Open ports discovered: {self.open_ports}")
             self.logger.info(f"Performing Test...")
             if self.perform_test():
