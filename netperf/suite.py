@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from scapy.all import Ether, IP, TCP, sr1, send, sendp, conf, sr
+from scapy.all import Ether, IP, TCP, sr1, send, sendp, conf
 import time
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed

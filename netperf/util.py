@@ -173,7 +173,7 @@ class Logger:
         self.logger.error(message)
 
     @classmethod
-    def configure(cls, path=None, test="default", level=logging.INFO):
+    def configure(cls, path=None, test="default", level=None):
         if cls._configured:
             return
         cls._default_path = path or cls._default_path
@@ -185,4 +185,6 @@ class Logger:
     def getLogger(cls):
         if cls._logger_name not in Logger._loggers:
             Logger._loggers[cls._logger_name] = cls()
-        return Logger._loggers[cls._logger_name]
+        logger_instance = Logger._loggers[cls._logger_name]
+        logger_instance.logger.setLevel(cls._logger_level)
+        return logger_instance
