@@ -5,6 +5,8 @@ import glob
 import paramiko
 
 # ssh_utils: SSH 관련 기능
+
+
 class SSHClient:
     _instance = None
 
@@ -36,46 +38,61 @@ class SSHClient:
         self.client.close()
 
 # net_info: 네트워크 정보 관련 기능
+
+
 def get_nic_ip():
     """기본 네트워크 인터페이스의 IP 주소를 가져옵니다."""
-    nic = subprocess.getoutput("ip -o -4 route show to default | awk '{print $5}'")
-    ip = subprocess.getoutput(f"ip -o -4 addr show {nic} | awk '{{print $4}}'").split('/')[0]
+    nic = subprocess.getoutput(
+        "ip -o -4 route show to default | awk '{print $5}'")
+    ip = subprocess.getoutput(
+        f"ip -o -4 addr show {nic} | awk '{{print $4}}'").split('/')[0]
     return ip
+
 
 def get_nic_info(client=None, remote_flag=False):
     """네트워크 인터페이스와 MAC 주소를 가져옵니다."""
     if remote_flag and client:
-        nic, _ = client.execute_command("ip -o -4 route show to default | awk '{print $5}'", get_output=True)
-        mac, _ = client.execute_command(f"cat /sys/class/net/{nic}/address", get_output=True)
+        nic, _ = client.execute_command(
+            "ip -o -4 route show to default | awk '{print $5}'", get_output=True)
+        mac, _ = client.execute_command(
+            f"cat /sys/class/net/{nic}/address", get_output=True)
     else:
-        nic = subprocess.getoutput("ip -o -4 route show to default | awk '{print $5}'")
+        nic = subprocess.getoutput(
+            "ip -o -4 route show to default | awk '{print $5}'")
         mac = subprocess.getoutput(f"cat /sys/class/net/{nic}/address")
     return nic, mac
+
 
 def get_path(client=None, remote_flag=False):
     """지정된 경로를 검색하여 반환합니다."""
     if remote_flag and client:
-        path, _ = client.execute_command("find /home -maxdepth 2 -type d -name 'netperf'", get_output=True)
+        path, _ = client.execute_command(
+            "find /home -maxdepth 2 -type d -name 'netperf'", get_output=True)
         return path
-    path = subprocess.getoutput("find /home -maxdepth 2 -type d -name 'netperf'")
+    path = subprocess.getoutput(
+        "find /home -maxdepth 2 -type d -name 'netperf'")
     return path
+
 
 def get_recent_dir(dirs, timestamp):
     """지정된 디렉토리 내에서 가장 최근 디렉토리를 생성하여 반환합니다."""
     subdirs = glob.glob(os.path.join(dirs, "logs", timestamp, "*/"))
 
-    dir_numbers = [int(os.path.basename(os.path.normpath(d))) for d in subdirs if os.path.basename(os.path.normpath(d)).isdigit()]
+    dir_numbers = [int(os.path.basename(os.path.normpath(d)))
+                   for d in subdirs if os.path.basename(os.path.normpath(d)).isdigit()]
 
     if not subdirs:
         new_dir_path = os.path.join(dirs, "logs", timestamp, "0000")
     else:
         max_dir_number = max(dir_numbers, default=0)
         new_dir_number = max_dir_number + 1
-        new_dir_path = os.path.join(dirs, "logs", timestamp, f"{new_dir_number:04d}")
+        new_dir_path = os.path.join(
+            dirs, "logs", timestamp, f"{new_dir_number:04d}")
 
     os.makedirs(new_dir_path, exist_ok=True)
 
     return new_dir_path
+
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -98,12 +115,17 @@ _msgtype_prefixes = {
     'warning': [text['bold_yellow'], '!'],
     'error': [text['on_red'], 'ERROR']
 }
+
+
 class ConsoleFormatter(logging.Formatter):
     def format(self, record):
         # Select color and prefix based on log level
-        prefix, symbol = _msgtype_prefixes.get(record.levelname.lower(), ["", ""])
+        prefix, symbol = _msgtype_prefixes.get(
+            record.levelname.lower(), ["", ""])
         message = f"{WHITE}[{prefix}{symbol}{WHITE}{RESET}] {WHITE}{record.getMessage()}{RESET}"
         return message
+
+
 class FileFormatter(logging.Formatter):
     DATE_FORMAT = "%Y%m%d %H:%M:%S"
 
@@ -111,6 +133,8 @@ class FileFormatter(logging.Formatter):
         date = self.formatTime(record, self.DATE_FORMAT)
         message = f"[{date}] {record.getMessage()}"
         return message
+
+
 class Logger:
     _instance = None
     _loggers = {}
@@ -153,7 +177,8 @@ class Logger:
                         file_handler.setFormatter(FileFormatter())
                         self.logger.addHandler(file_handler)
                     except Exception as e:
-                        self.logger.error(f"Failed to set up file handler: {e}")
+                        self.logger.error(
+                            f"Failed to set up file handler: {e}")
 
     def debug(self, message):
         self.logger.debug(message)
