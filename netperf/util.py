@@ -77,7 +77,6 @@ def get_recent_dir(dirs, timestamp):
 
     return new_dir_path
 
-
 RESET = "\033[0m"
 BOLD = "\033[1m"
 WHITE = "\033[1;37m"
@@ -99,23 +98,19 @@ _msgtype_prefixes = {
     'warning': [text['bold_yellow'], '!'],
     'error': [text['on_red'], 'ERROR']
 }
-
 class ConsoleFormatter(logging.Formatter):
     def format(self, record):
         # Select color and prefix based on log level
         prefix, symbol = _msgtype_prefixes.get(record.levelname.lower(), ["", ""])
         message = f"{WHITE}[{prefix}{symbol}{WHITE}{RESET}] {WHITE}{record.getMessage()}{RESET}"
         return message
-
 class FileFormatter(logging.Formatter):
     DATE_FORMAT = "%Y%m%d %H:%M:%S"
-
 
     def format(self, record):
         date = self.formatTime(record, self.DATE_FORMAT)
         message = f"[{date}] {record.getMessage()}"
         return message
-
 class Logger:
     _instance = None
     _loggers = {}
@@ -124,12 +119,10 @@ class Logger:
     _logger_level = logging.INFO
     _configured = False
 
-
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super(Logger, cls).__new__(cls)
         return cls._instance
-
 
     def __init__(self):
         if not hasattr(self, 'logger'):  # 처음 초기화할 때만 실행
@@ -166,18 +159,14 @@ class Logger:
     def debug(self, message):
         self.logger.debug(message)
 
-
     def info(self, message):
         self.logger.info(message)
-
 
     def warn(self, message):
         self.logger.warning(message)
 
-
     def error(self, message):
         self.logger.error(message)
-
 
     @classmethod
     def configure(cls, path=None, test="default", level=None):
@@ -187,7 +176,6 @@ class Logger:
         cls._logger_name = test
         cls._logger_level = level
         cls._configured = True
-
 
     @classmethod
     def getLogger(cls):
