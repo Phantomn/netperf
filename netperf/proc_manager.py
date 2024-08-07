@@ -43,7 +43,7 @@ class ProcessManager:
             try:
                 self.client.execute_command(command)
             except Exception as e:
-                self.logger.error(f"Failed to kill {kwargs['pid']}")
+                self.logger.error(f"Failed to kill {kwargs['pid']} {e}")
             pid = None
         elif process_type == "sftp":
             try:
