@@ -42,8 +42,8 @@ REVISION=$(shell [ -d ../.svn ] && svnversion -n || cat ../REVISION)
 RELEASE += -DVERSION="\"$(VERSION)\""
 RELEASE += -DREVISION="\"$(REVISION)\""
 
-COMPONENTS = ITGSend ITGRecv ITGLog ITGDec libITG ITGManager
-WARNINGS = -Wall -Wno-deprecated -Wno-strict-aliasing
+COMPONENTS = ITGSend ITGRecv ITGLog ITGDec ITGManager
+WARNINGS = -Wall -Wno-deprecated -Wno-strict-aliasing -Wno-unused-result -Wno-misleading-indentation -Wno-stringop-truncation -Wno-sizeof-array-argument -Wno-enum-compare
 PREFIX = /usr/local
 
 # OS dependent options
@@ -77,14 +77,18 @@ export CP = cp
 export MV = mv
 export SUFFIX =
 export SOSUFFIX = .so
+<<<<<<< HEAD
 export CXXFLAGS = $(CXXOPT) $(OSFLAGS) $(RELEASE) $(WARNINGS) -fPIC
+=======
+export CXXFLAGS = $(CXXOPT) $(OSFLAGS) $(RELEASE) $(WARNINGS) -fPIC 
+>>>>>>> a5bb6b7 (Fix Makefile)
 export LDFLAGS = -lpthread -lm $(LDOPT)
 export BASEDIR = $(shell pwd)
 export BIN = $(shell dirname $(BASEDIR))/bin
 export COMMON = $(BASEDIR)/common/
 export NRCLEAN = $(BASEDIR)/ITGSend/newran/
 export EXEC_DIR = /usr/local/bin
-export CXX = clang++
+export CXX = g++
 export RANLIB = ranlib
 export THOBJS = common/thread.o
 export OBJS = common/ITG.o common/timestamp.o common/serial.o common/pipes.o
@@ -93,8 +97,8 @@ export OBJS = common/ITG.o common/timestamp.o common/serial.o common/pipes.o
 # Generic Rules #
 #################
 
-.PHONY: $(COMPONENTS)
-all: check head $(COMPONENTS)
+.PHONY: $(COMPONENTS) libITG
+all: check head libITG $(COMPONENTS)
 	@ printf '\n----------------------------------------------------------\n'
 	@ echo 'D-ITG executables created in $(BIN)'
 
@@ -149,6 +153,7 @@ endif
 	@ printf '\n---------------------\n'
 	@ echo 'Building common files'
 	@ echo '---------------------'
+	@ mkdir -p $(BIN)
 
 ######
 check:
@@ -175,8 +180,18 @@ endif
 	@ echo 'All dependencies satisfied.'
 	
 ##############
+<<<<<<< HEAD
 $(COMPONENTS): $(THOBJS) $(OBJS)
 	@ mkdir -p "$(PREFIX)/bin"
+=======
+libITG$(SOSUFFIX):
+	@ printf '\n-------------------\n'
+	@ echo 'Building libITG'
+	@ echo '-------------------'
+	@ $(MAKE) -C libITG --no-print-directory
+
+$(COMPONENTS): libITG$(SOSUFFIX) $(THOBJS) $(OBJS)
+>>>>>>> a5bb6b7 (Fix Makefile)
 	@ printf '\n-------------------\n'
 	@ echo 'Building $@'
 	@ echo '-------------------'
