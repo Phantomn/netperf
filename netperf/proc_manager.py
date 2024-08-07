@@ -62,7 +62,7 @@ class ProcessManager:
         elif process_type == "decomp":
             try:
                 command=f"tar -C {kwargs['path']} -zxvf {os.path.join(kwargs['path'], kwargs['file_name'])}.tar.gz"
-                result = subprocess.run(command, shell=True, text=True, capture_output=True)
+                result = subprocess.run(command, shell=True, text=True, capture_output=True, check=True)
                 if result.returncode != 0:
                     raise subprocess.CalledProcessError(result.returncode, command)
                 pid = None
@@ -104,9 +104,9 @@ class ProcessManager:
                     priv, _ = self.client.execute_command(command, get_output=True)
                 else:
                     command = f"sudo -S setcap {kwargs['capabilities']} {executable}"
-                    result = subprocess.run(command, shell=True, input=f"{kwargs['ssh_pass']}\n", text=True, capture_output=True)
+                    result = subprocess.run(command, shell=True, input=f"{kwargs['ssh_pass']}\n", text=True, capture_output=True, check=True)
                     command = f"sudo -S getcap {executable}"
-                    result = subprocess.run(command, shell=True, input=f"{kwargs['ssh_pass']}\n", text=True, capture_output=True)
+                    result = subprocess.run(command, shell=True, input=f"{kwargs['ssh_pass']}\n", text=True, capture_output=True, check=True)
                     priv = result.stdout.strip()
                 return priv
             except subprocess.CalledProcessError as e:
