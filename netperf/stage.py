@@ -18,26 +18,26 @@ class Stage:
         self.timestamp = time.strftime("%Y%m%d")
         self.client = SSHClient(self.receiver_ip, self.receiver_ssh_id, self.receiver_ssh_pw)
         self.process_manager = ProcessManager(self.client)
-        
+
         self.sender_nic, self.sender_mac = get_nic_info(None)
         self.sender_ip = get_nic_ip()
         self.receiver_nic, self.receiver_mac = get_nic_info(self.client, True)
         self.receiver_dir = get_path(self.client, True)
         self.suite = Suite(self.sender_nic, self.sender_mac, self.sender_ip, self.receiver_mac, self.receiver_ip)
-        
+
         self.pids = {}
         self.privileges = {}
-        
+
         self.sender_log_path = get_recent_dir(self.sender_dir, self.timestamp)
         os.makedirs(self.sender_log_path, exist_ok=True)
-            
+
         self.setup_logging()
-    
+
     def setup_logging(self):
         import logging
         Logger.configure(self.sender_log_path, self.test, logging.DEBUG)
         self.logger = Logger.getLogger()
-    
+
     def setup(self):
         if not self.receiver_dir:
             self.receiver_dir = f"/home/{self.receiver_ssh_id}/netperf"
@@ -51,7 +51,7 @@ class Stage:
                              f"{self.sender_dir}/bin/arch/{self.arch}/{i}")
             self.client.execute_command(f"echo {self.receiver_ssh_pw} | sudo -S chmod 755 {os.path.join(self.receiver_dir, 'bin', i)}")
         self.setup_privileges()
-        
+
     def handle_stage(self, process_type, func, *args, **kwargs):
         try:
             result = func(*args, **kwargs)
@@ -60,7 +60,7 @@ class Stage:
         except Exception as e:
             self.logger.error(f"Failed to complete {process_type}: {e}")
             return None
-        
+
     def set_privileges(self, tools, ssh_pass, is_remote):
         for tool, path in tools.items():
             try:
@@ -88,7 +88,7 @@ class Stage:
             self.set_privileges(local_tools, self.sender_ssh_pw, is_remote=False)
         except Exception as e:
             self.logger.error(f"Failed to set privileges: {e}")
-    
+
     def run_process(self, process_type, **kwargs):
         pid = self.handle_stage(
             f"Starting {process_type} on receiver",
@@ -97,7 +97,7 @@ class Stage:
         if pid is None:
             self.logger.error(f"Failed to start {process_type}")
         return pid
-    
+
     def sftp_action(self, sftp_client, action, remote_path, local_path):
         try:
             if action not in ["download", "upload"]:
@@ -125,7 +125,7 @@ class Stage:
                     else:
                         remote_file.write(data)
                     progress.update(len(data))
-                    
+
             local_file.close()
             remote_file.close()
 
@@ -172,7 +172,7 @@ class Stage:
             "cleanup",
             processes=processes,
             ssh_pass=self.receiver_ssh_pw) 
-           
+
     def run(self):
         self.setup()
         self.pids['tcpdump'] = self.run_process(
@@ -192,7 +192,7 @@ class Stage:
             receiver_ip=self.receiver_ip,
             sender_log_path=self.sender_log_path,
             receiver_dir=self.receiver_dir)
-        
+
         if not self.handle_stage(f"Starting {self.test} Test", self.suite.run):
             self.cleanup_processes([self.pids.get('tcpdump'), self.pids.get('itgrecv')])
             return
@@ -204,7 +204,7 @@ class Stage:
 
         self.cleanup_processes([self.pids.get('tcpdump'), self.pids.get('itgrecv')])
         self.client.close()
-        
+
         if not self.handle_stage(
             f"Parsing {self.test} Test",
             self.process_manager.run_process,
@@ -212,5 +212,5 @@ class Stage:
             sender_dir=self.sender_dir,
             sender_log_path=self.sender_log_path):
             return
-        
+
         self.logger.debug("Successfully Test Finish")

@@ -9,7 +9,7 @@ class ProcessManager:
         self.client = client
         self.parser = None
         self.logger = Logger.getLogger()
-    
+
     def run_process(self, process_type, **kwargs):
         pid = None
         if process_type == "tcpdump":
@@ -114,5 +114,5 @@ class ProcessManager:
             pid = None
         else:
             raise ValueError(f"Unknown process type {process_type}")
-        
+
         return pid
