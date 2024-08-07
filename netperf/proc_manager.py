@@ -19,7 +19,7 @@ class ProcessManager:
             time.sleep(2)
         elif process_type == "itgrecv":
             command = f"nohup {kwargs['receiver_dir']}/bin/ITGRecv > {os.path.join(kwargs['receiver_dir'], 'logs', kwargs['name'])} 2>&1 & echo $!"
-            stdout, stderr = self.client.execute_command(command, True)
+            stdout, _ = self.client.execute_command(command, True)
             pid = stdout
             time.sleep(2)
         elif process_type == "itgsend":
