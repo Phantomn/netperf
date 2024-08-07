@@ -155,7 +155,6 @@ class Logger:
                     except Exception as e:
                         self.logger.error(f"Failed to set up file handler: {e}")
 
-
     def debug(self, message):
         self.logger.debug(message)
 
