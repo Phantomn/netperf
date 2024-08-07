@@ -107,24 +107,23 @@ class Stage:
             if action == "download":
                 file_size = sftp_client.stat(remote_path).st_size
                 remote_file = sftp_client.file(remote_path, 'rb')
-                local_file = open(local_path, 'wb')
                 desc = f"Downloading {os.path.basename(local_path)}"
             else:
                 file_size = os.path.getsize(local_path)
                 remote_file = sftp_client.file(remote_path, 'wb')
-                local_file = open(local_path, 'rb')
                 desc = f"Uploading {os.path.basename(local_path)}"
-
-            with tqdm(total=file_size, unit='B', unit_scale=True, desc=desc) as progress:
-                while True:
-                    data = local_file.read(32768) if action == "upload" else remote_file.read(32768)
-                    if not data:
-                        break
-                    if action == "download":
-                        local_file.write(data)
-                    else:
-                        remote_file.write(data)
-                    progress.update(len(data))
+                
+            with open(local_path, 'wb' if action == "download" else "rb") as local_file, remote_file:
+                with tqdm(total=file_size, unit='B', unit_scale=True, desc=desc) as progress:
+                    while True:
+                        data = local_file.read(32768) if action == "upload" else remote_file.read(32768)
+                        if not data:
+                            break
+                        if action == "download":
+                            local_file.write(data)
+                        else:
+                            remote_file.write(data)
+                        progress.update(len(data))
 
             local_file.close()
             remote_file.close()
