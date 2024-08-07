@@ -112,7 +112,7 @@ class Stage:
                 file_size = os.path.getsize(local_path)
                 remote_file = sftp_client.file(remote_path, 'wb')
                 desc = f"Uploading {os.path.basename(local_path)}"
-                
+
             with open(local_path, 'wb' if action == "download" else "rb") as local_file, remote_file:
                 with tqdm(total=file_size, unit='B', unit_scale=True, desc=desc) as progress:
                     while True:
