@@ -57,9 +57,8 @@ def get_path(client=None, remote_flag=False):
     if remote_flag and client:
         path, _ = client.execute_command("find /home -maxdepth 2 -type d -name 'netperf'", get_output=True)
         return path
-    else:
-        path = subprocess.getoutput("find /home -maxdepth 2 -type d -name 'netperf'")
-        return path
+    path = subprocess.getoutput("find /home -maxdepth 2 -type d -name 'netperf'")
+    return path
 
 def get_recent_dir(dirs, timestamp):
     """지정된 디렉토리 내에서 가장 최근 디렉토리를 생성하여 반환합니다."""
