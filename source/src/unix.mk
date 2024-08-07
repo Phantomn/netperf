@@ -77,18 +77,14 @@ export CP = cp
 export MV = mv
 export SUFFIX =
 export SOSUFFIX = .so
-<<<<<<< HEAD
-export CXXFLAGS = $(CXXOPT) $(OSFLAGS) $(RELEASE) $(WARNINGS) -fPIC
-=======
 export CXXFLAGS = $(CXXOPT) $(OSFLAGS) $(RELEASE) $(WARNINGS) -fPIC 
->>>>>>> a5bb6b7 (Fix Makefile)
 export LDFLAGS = -lpthread -lm $(LDOPT)
 export BASEDIR = $(shell pwd)
 export BIN = $(shell dirname $(BASEDIR))/bin
 export COMMON = $(BASEDIR)/common/
 export NRCLEAN = $(BASEDIR)/ITGSend/newran/
 export EXEC_DIR = /usr/local/bin
-export CXX = g++
+export CXX = clang++
 export RANLIB = ranlib
 export THOBJS = common/thread.o
 export OBJS = common/ITG.o common/timestamp.o common/serial.o common/pipes.o
@@ -180,10 +176,6 @@ endif
 	@ echo 'All dependencies satisfied.'
 	
 ##############
-<<<<<<< HEAD
-$(COMPONENTS): $(THOBJS) $(OBJS)
-	@ mkdir -p "$(PREFIX)/bin"
-=======
 libITG$(SOSUFFIX):
 	@ printf '\n-------------------\n'
 	@ echo 'Building libITG'
@@ -191,7 +183,6 @@ libITG$(SOSUFFIX):
 	@ $(MAKE) -C libITG --no-print-directory
 
 $(COMPONENTS): libITG$(SOSUFFIX) $(THOBJS) $(OBJS)
->>>>>>> a5bb6b7 (Fix Makefile)
 	@ printf '\n-------------------\n'
 	@ echo 'Building $@'
 	@ echo '-------------------'
