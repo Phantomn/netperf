@@ -9,7 +9,7 @@ class Parser:
         self.info = {}
         self.path = path
         self.logger = Logger.getLogger()
-        
+
     def extract_info(self):
         from_ip_match = re.search(r'From (\d+\.\d+\.\d+\.\d+:\d+)', self.log)
         to_ip_match = re.search(r'To\s+(\d+\.\d+\.\d+\.\d+:\d+)', self.log)
@@ -19,7 +19,7 @@ class Parser:
 
         # "----------------------------------------------------------" 이후의 데이터 추출
         data_sections = re.split(r'-{58}', self.log)
-        
+
         if len(data_sections) >= 3:
             results_data = data_sections[2].strip().split('\n')
             for line in results_data:
@@ -47,14 +47,14 @@ class Parser:
         self.info['is_latency'] = "충족" if (self.info['average_delay'] * 1000) <= (cycle_period * (1 + tol_period_error)) else "충족하지 않음"
         packet_loss_rate = self.info['packets_dropped'] / self.info['total_packets']
         self.info['is_frame_loss'] = "충족" if packet_loss_rate <= tol_packet_loss else "충족하지 않음"
-        
+
         self.info['throughput_kbps'] = throughput_bps / 1000
         self.info['threshold_kbps'] = threshold_bps / 1000
-        
+
         output = os.path.join(self.path, "results.json")
         with open(output, 'w') as file:
             json.dump(self.info, file, indent=4)
-            
+
         self.logger.info(f"Analyze Results: {output}")
         self.logger.info(f"Throughput(kbps): {self.info['throughput_kbps']:.02f}, 결과: {self.info['is_throughput']}")
         self.logger.info(f"Latency: {(self.info['average_delay'] * 1000):.02f}, 결과: {self.info['is_latency']}")

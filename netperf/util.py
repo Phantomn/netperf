@@ -19,19 +19,19 @@ class SSHClient:
             self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             if ip and ssh_user and ssh_pass:
                 self.client.connect(ip, username=ssh_user, password=ssh_pass)
-        
+
     def execute_command(self, command, get_output=False):
         stdin, stdout, stderr = self.client.exec_command(command)
         stdout.channel.recv_exit_status()  # 블로킹 호출로 명령 실행 완료 대기
 
         if get_output:
             return stdout.read().decode().strip(), stderr.read().decode().strip()
-        
+
         return None, None
-    
+
     def open_sftp(self):
         return self.client.open_sftp()
-    
+
     def close(self):
         self.client.close()
 
@@ -63,7 +63,7 @@ def get_path(client=None, remote_flag=False):
 def get_recent_dir(dirs, timestamp):
     """지정된 디렉토리 내에서 가장 최근 디렉토리를 생성하여 반환합니다."""
     subdirs = glob.glob(os.path.join(dirs, "logs", timestamp, "*/"))
-        
+
     dir_numbers = [int(os.path.basename(os.path.normpath(d))) for d in subdirs if os.path.basename(os.path.normpath(d)).isdigit()]
 
     if not subdirs:
@@ -72,9 +72,9 @@ def get_recent_dir(dirs, timestamp):
         max_dir_number = max(dir_numbers, default=0)
         new_dir_number = max_dir_number + 1
         new_dir_path = os.path.join(dirs, "logs", timestamp, f"{new_dir_number:04d}") 
-            
+
     os.makedirs(new_dir_path, exist_ok=True)
-        
+
     return new_dir_path
 
 # log_utils: 로그 관련 기능
@@ -124,7 +124,7 @@ class Logger:
     _logger_name = "default"
     _logger_level = logging.INFO
     _configured = False
-    
+
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super(Logger, cls).__new__(cls)
@@ -134,7 +134,7 @@ class Logger:
         if not hasattr(self, 'logger'):  # 처음 초기화할 때만 실행
             self.logger = logging.getLogger(Logger._logger_name)
             self.logger.setLevel(Logger._logger_level)
-        
+
             if not self.logger.handlers:
                 # Console handler with colored output
                 console_handler = logging.StreamHandler()
@@ -179,7 +179,7 @@ class Logger:
         cls._logger_name = test
         cls._logger_level = level
         cls._configured = True
-        
+
     @classmethod
     def getLogger(cls):
         if cls._logger_name not in Logger._loggers:
