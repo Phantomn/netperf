@@ -138,9 +138,8 @@ class Stage:
             if action == "download":
                 self.logger.debug(f"Failed to {action}: {remote_path} to {local_path} --- {e}")
                 raise
-            else:
-                self.logger.debug(f"Failed to {action}: {local_path} to {remote_path} --- {e}")
-                raise
+            self.logger.debug(f"Failed to {action}: {local_path} to {remote_path} --- {e}")
+            raise
 
     def archive_and_download(self, sftp_client, file_names):
         for file_name in file_names:
