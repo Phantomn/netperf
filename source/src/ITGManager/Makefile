@@ -8,7 +8,9 @@ ifeq ($(BUILD_ENV),WIN32_MINGW)
 else
 	@ printf "[ LD ]\t$@ <- $(OBJS)\n"
 endif
-	@ $(CXX) $(CXXFLAGS) $(OBJS) -L$(BIN) -lITG -o $@ $(LDFLAGS) 
+	@ printf '[ CXXFLAGS ]\t $(CXX) $(CXXFLAGS) $(OBJS) -L$(BIN) -Wl,-rpath,$(BIN) -lITG -o $@ $(LDFLAGS)\n'
+	@ printf '[ Copy ]\t $(CP) $@ $(BIN)\n'
+	@ $(CXX) $(CXXFLAGS) $(OBJS) -L$(BIN) -Wl,-rpath,$(BIN) -lITG -o $@ $(LDFLAGS) 
 	@ $(CP) $@ $(BIN)
 
 clean:
