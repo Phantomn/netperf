@@ -42,8 +42,8 @@ REVISION=$(shell [ -d ../.svn ] && svnversion -n || cat ../REVISION)
 RELEASE += -DVERSION="\"$(VERSION)\""
 RELEASE += -DREVISION="\"$(REVISION)\""
 
-COMPONENTS = ITGSend ITGRecv ITGLog ITGDec libITG ITGManager
-WARNINGS = -Wall -Wno-deprecated -Wno-strict-aliasing
+COMPONENTS = ITGSend ITGRecv ITGLog ITGDec ITGManager
+WARNINGS = -Wall -Wno-deprecated -Wno-strict-aliasing -Wno-unused-result -Wno-misleading-indentation -Wno-stringop-truncation -Wno-sizeof-array-argument -Wno-enum-compare
 PREFIX = /usr/local
 
 # OS dependent options
@@ -77,7 +77,7 @@ export CP = cp
 export MV = mv
 export SUFFIX =
 export SOSUFFIX = .so
-export CXXFLAGS = $(CXXOPT) $(OSFLAGS) $(RELEASE) $(WARNINGS) -fPIC -fsanitize=address
+export CXXFLAGS = $(CXXOPT) $(OSFLAGS) $(RELEASE) $(WARNINGS) -fPIC 
 export LDFLAGS = -lpthread -lm $(LDOPT)
 export BASEDIR = $(shell pwd)
 export BIN = $(shell dirname $(BASEDIR))/bin
@@ -93,8 +93,8 @@ export OBJS = common/ITG.o common/timestamp.o common/serial.o common/pipes.o
 # Generic Rules #
 #################
 
-.PHONY: $(COMPONENTS)
-all: check head $(COMPONENTS)
+.PHONY: $(COMPONENTS) libITG
+all: check head libITG $(COMPONENTS)
 	@ printf '\n----------------------------------------------------------\n'
 	@ echo 'D-ITG executables created in $(BIN)'
 
@@ -149,6 +149,7 @@ endif
 	@ printf '\n---------------------\n'
 	@ echo 'Building common files'
 	@ echo '---------------------'
+	@ mkdir -p $(BIN)
 
 ######
 check:
@@ -175,7 +176,13 @@ endif
 	@ echo 'All dependencies satisfied.'
 	
 ##############
-$(COMPONENTS): $(THOBJS) $(OBJS)
+libITG$(SOSUFFIX):
+	@ printf '\n-------------------\n'
+	@ echo 'Building libITG'
+	@ echo '-------------------'
+	@ $(MAKE) -C libITG --no-print-directory
+
+$(COMPONENTS): libITG$(SOSUFFIX) $(THOBJS) $(OBJS)
 	@ printf '\n-------------------\n'
 	@ echo 'Building $@'
 	@ echo '-------------------'
@@ -205,7 +212,7 @@ install: check_uid
 	@ $(CP) $(BIN)/libITG$(SOSUFFIX) "$(PREFIX)/lib"
 	@ echo 'done'
 	@ printf '\n----------------------------------------------------------\n'
-	@ echo 'D-ITG installed in $(BIN)'
+	@ echo 'D-ITG installed in $(PREFIX)/bin'
 	
 ##########
 uninstall: check_uid check_ditg

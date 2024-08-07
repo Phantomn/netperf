@@ -213,4 +213,4 @@ class Stage:
             sender_log_path=self.sender_log_path):
             return
         
-        self.logger.info("Successfully Test Finish")
+        self.logger.debug("Successfully Test Finish")
