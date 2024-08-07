@@ -161,8 +161,7 @@ class Stage:
                     self.process_manager.run_process, "decomp",
                     path=self.sender_log_path, file_name=file_name):
                     self.logger.error(f"Failed to decompress file {file_name}")
-                    self.cleanup_processes([self.pids.get('tcpdump'), self.pids.get('itgrecv')])
-                    raise
+                    self.cleanup_processes([self.pids.get('tcpdump'), self.pids.get('itgrecv')])           
 
     def cleanup_processes(self, processes):
         self.handle_stage(
