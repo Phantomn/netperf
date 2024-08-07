@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from util import Logger
 
+
 class Suite:
     def __init__(self, iface, src_mac, src_ip, dst_mac, dst_ip, duration=5, rate_limit=14880):
         self.iface = iface
@@ -52,7 +53,8 @@ class Suite:
     def gen_packet(self, dst_port):
         eth_frame = Ether(src=self.src_mac, dst=self.dst_mac)
         ip_frame = IP(src=self.src_ip, dst=self.dst_ip)
-        tcp_frame = TCP(sport=random.randint(1024, 65535), dport=dst_port, flags="S")
+        tcp_frame = TCP(sport=random.randint(
+            1024, 65535), dport=dst_port, flags="S")
         packet = eth_frame / ip_frame / tcp_frame
         return packet
 
