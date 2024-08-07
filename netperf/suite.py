@@ -77,19 +77,17 @@ class Suite:
                                 remaining_time = max(0, 1 - elapsed_time % 1)
                                 time.sleep(remaining_time)
                                 count = 0
-        return True
 
     def run(self):
         self.logger.info("Discovering open ports...")
         self.discover_open_ports(7000, 9000)
-
         if not self.open_ports:
             self.logger.info("No open ports discovered. Exiting.")
             return False
         else:
             self.logger.info(f"Open ports discovered: {self.open_ports}")
             self.logger.info(f"Performing Test...")
-            if not self.perform_test():
+            if self.perform_test():
                 self.logger.error("Failed perform Test")
                 return False
             else:
