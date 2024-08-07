@@ -85,7 +85,7 @@ class Suite:
             self.logger.info("No open ports discovered. Exiting.")
             return False
         self.logger.info(f"Open ports discovered: {self.open_ports}")
-        self.logger.info(f"Performing Test...")
+        self.logger.info("Performing Test...")
         if self.perform_test():
             self.logger.error("Failed perform Test")
             return False
