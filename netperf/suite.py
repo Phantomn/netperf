@@ -19,7 +19,7 @@ class Suite:
         self.open_ports_lock = threading.Lock()
         self.logger = Logger.getLogger()
         self.chunk_size = 10
-        
+
         conf.iface = self.iface
         conf.verb = 0
         conf.sniff_promisc = True
@@ -43,7 +43,7 @@ class Suite:
                 chunk_end = min(chunk_start + self.chunk_size, end_port)
                 port_range = range(chunk_start, chunk_end)
                 futures.append(executor.submit(self.scan_port, port_range))
-            
+
             with tqdm(total=end_port - start_port, unit=" port", desc="Scanning Ports", ncols=100) as progress_bar:
                 for future in as_completed(futures):
                     future.result()
