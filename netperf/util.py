@@ -21,7 +21,7 @@ class SSHClient:
                 self.client.connect(ip, username=ssh_user, password=ssh_pass)
 
     def execute_command(self, command, get_output=False):
-        stdin, stdout, stderr = self.client.exec_command(command)
+        _, stdout, stderr = self.client.exec_command(command)
         stdout.channel.recv_exit_status()  # 블로킹 호출로 명령 실행 완료 대기
 
         if get_output:
@@ -71,14 +71,12 @@ def get_recent_dir(dirs, timestamp):
     else:
         max_dir_number = max(dir_numbers, default=0)
         new_dir_number = max_dir_number + 1
-        new_dir_path = os.path.join(dirs, "logs", timestamp, f"{new_dir_number:04d}") 
+        new_dir_path = os.path.join(dirs, "logs", timestamp, f"{new_dir_number:04d}")
 
     os.makedirs(new_dir_path, exist_ok=True)
 
     return new_dir_path
 
-# log_utils: 로그 관련 기능
-# ANSI escape sequences for colors
 RESET = "\033[0m"
 BOLD = "\033[1m"
 WHITE = "\033[1;37m"
@@ -100,23 +98,19 @@ _msgtype_prefixes = {
     'warning': [text['bold_yellow'], '!'],
     'error': [text['on_red'], 'ERROR']
 }
-
 class ConsoleFormatter(logging.Formatter):
     def format(self, record):
         # Select color and prefix based on log level
         prefix, symbol = _msgtype_prefixes.get(record.levelname.lower(), ["", ""])
         message = f"{WHITE}[{prefix}{symbol}{WHITE}{RESET}] {WHITE}{record.getMessage()}{RESET}"
         return message
-
 class FileFormatter(logging.Formatter):
     DATE_FORMAT = "%Y%m%d %H:%M:%S"
 
     def format(self, record):
         date = self.formatTime(record, self.DATE_FORMAT)
-        prefix, symbol = _msgtype_prefixes.get(record.levelname.lower(), ["", ""])
         message = f"[{date}] {record.getMessage()}"
         return message
-
 class Logger:
     _instance = None
     _loggers = {}
@@ -132,6 +126,7 @@ class Logger:
 
     def __init__(self):
         if not hasattr(self, 'logger'):  # 처음 초기화할 때만 실행
+            # skipcq: PTC-W0052
             self.logger = logging.getLogger(Logger._logger_name)
             self.logger.setLevel(Logger._logger_level)
 
@@ -148,7 +143,8 @@ class Logger:
                         os.makedirs(Logger._default_path, exist_ok=True)
 
                         # Construct the full file path
-                        filename = os.path.join(Logger._default_path, f"{Logger._logger_name}.log")
+                        filename = os.path.join(Logger._default_path,
+                                                f"{Logger._logger_name}.log")
 
                         # Create the file if it doesn't exist
                         open(filename, 'a').close()
