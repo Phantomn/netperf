@@ -5,6 +5,7 @@ from util import SSHClient, get_nic_info, get_path, get_recent_dir, get_nic_ip, 
 from proc_manager import ProcessManager
 from suite import Suite
 
+
 class Stage:
     def __init__(self, arch, sender_ssh_pw, receiver_ip, test_type, receiver_ssh_id, receiver_ssh_pw):
         self.arch = arch
@@ -16,14 +17,16 @@ class Stage:
         self.tcpdump_file = f"{test_type}.pcap"
         self.sender_dir = get_path(None, None)
         self.timestamp = time.strftime("%Y%m%d")
-        self.client = SSHClient(self.receiver_ip, self.receiver_ssh_id, self.receiver_ssh_pw)
+        self.client = SSHClient(
+            self.receiver_ip, self.receiver_ssh_id, self.receiver_ssh_pw)
         self.process_manager = ProcessManager(self.client)
 
         self.sender_nic, self.sender_mac = get_nic_info(None)
         self.sender_ip = get_nic_ip()
         self.receiver_nic, self.receiver_mac = get_nic_info(self.client, True)
         self.receiver_dir = get_path(self.client, True)
-        self.suite = Suite(self.sender_nic, self.sender_mac, self.sender_ip, self.receiver_mac, self.receiver_ip, self.test_type)
+        self.suite = Suite(self.sender_nic, self.sender_mac, self.sender_ip,
+                           self.receiver_mac, self.receiver_ip, self.test_type)
 
         self.pids = {}
         self.privileges = {}
@@ -41,15 +44,17 @@ class Stage:
     def setup(self):
         if not self.receiver_dir:
             self.receiver_dir = f"/home/{self.receiver_ssh_id}/netperf"
-            self.client.execute_command(f"mkdir -p {self.receiver_dir}/bin {self.receiver_dir}/logs")
+            self.client.execute_command(
+                f"mkdir -p {self.receiver_dir}/bin {self.receiver_dir}/logs")
         bin_list = ["ITGDec", "ITGRecv", "ITGLog", "libITG.so"]
         self.cleanup_processes(bin_list)
         for i in bin_list:
             sftp_client = self.client.open_sftp()
-            self.sftp_action(sftp_client, "upload", 
-                             os.path.join(f"{self.receiver_dir}/bin/{i}"), 
+            self.sftp_action(sftp_client, "upload",
+                             os.path.join(f"{self.receiver_dir}/bin/{i}"),
                              f"{self.sender_dir}/bin/arch/{self.arch}/{i}")
-            self.client.execute_command(f"echo {self.receiver_ssh_pw} | sudo -S chmod 755 {os.path.join(self.receiver_dir, 'bin', i)}")
+            self.client.execute_command(
+                f"echo {self.receiver_ssh_pw} | sudo -S chmod 755 {os.path.join(self.receiver_dir, 'bin', i)}")
         self.setup_privileges()
 
     def handle_stage(self, process_type, func, *args, **kwargs):
@@ -71,7 +76,8 @@ class Stage:
                     ssh_pass=ssh_pass,
                     is_remote=is_remote)
                 if privilege:
-                    self.logger.info(f"Privileges set for {tool}({path}): cap_net_raw,cap_net_admin=eip")
+                    self.logger.info(
+                        f"Privileges set for {tool}({path}): cap_net_raw,cap_net_admin=eip")
                 else:
                     raise Exception(f"Privilege setting failed for {tool}")
                 self.privileges[tool] = privilege
@@ -81,11 +87,15 @@ class Stage:
                 raise
 
     def setup_privileges(self):
-        remote_tools = {"tcpdump": "/usr/bin/tcpdump","ITGRecv": f"{self.receiver_dir}/bin/ITGRecv"} 
-        local_tools = {"scapy": "/usr/bin/python3","ITGSend": f"{self.sender_dir}/bin/ITGSend"}
+        remote_tools = {"tcpdump": "/usr/bin/tcpdump",
+                        "ITGRecv": f"{self.receiver_dir}/bin/ITGRecv"}
+        local_tools = {"scapy": "/usr/bin/python3",
+                       "ITGSend": f"{self.sender_dir}/bin/ITGSend"}
         try:
-            self.set_privileges(remote_tools, self.receiver_ssh_pw, is_remote=True)
-            self.set_privileges(local_tools, self.sender_ssh_pw, is_remote=False)
+            self.set_privileges(
+                remote_tools, self.receiver_ssh_pw, is_remote=True)
+            self.set_privileges(
+                local_tools, self.sender_ssh_pw, is_remote=False)
         except Exception as e:
             self.logger.error(f"Failed to set privileges: {e}")
 
@@ -93,7 +103,7 @@ class Stage:
         pid = self.handle_stage(
             f"Starting {process_type} on receiver",
             self.process_manager.run_process,
-            process_type,**kwargs)
+            process_type, **kwargs)
         if pid is None:
             self.logger.error(f"Failed to start {process_type}")
         return pid
@@ -116,7 +126,8 @@ class Stage:
             with open(local_path, 'wb' if action == "download" else "rb") as local_file:
                 with tqdm(total=file_size, unit='B', unit_scale=True, desc=desc) as progress:
                     while True:
-                        data = local_file.read(32768) if action == "upload" else remote_file.read(32768)
+                        data = local_file.read(
+                            32768) if action == "upload" else remote_file.read(32768)
                         if not data:
                             break
                         if action == "download":
@@ -129,16 +140,20 @@ class Stage:
             remote_file.close()
 
             if action == "download":
-                self.logger.info(f"Downloaded file from {remote_path} to {local_path}")
+                self.logger.info(
+                    f"Downloaded file from {remote_path} to {local_path}")
             else:
-                self.logger.info(f"Uploaded file from {local_path} to {remote_path}")
+                self.logger.info(
+                    f"Uploaded file from {local_path} to {remote_path}")
 
         except Exception as e:
             if action == "download":
-                self.logger.debug(f"Failed to {action}: {remote_path} to {local_path} --- {e}")
+                self.logger.debug(
+                    f"Failed to {action}: {remote_path} to {local_path} --- {e}")
                 raise
             else:
-                self.logger.debug(f"Failed to {action}: {local_path} to {remote_path} --- {e}")
+                self.logger.debug(
+                    f"Failed to {action}: {local_path} to {remote_path} --- {e}")
                 raise
 
     def archive_and_download(self, sftp_client, file_names):
@@ -159,9 +174,10 @@ class Stage:
                 if self.handle_stage(
                     f"Decompress file {file_name}",
                     self.process_manager.run_process, "decomp",
-                    path=self.sender_log_path, file_name=file_name):
+                        path=self.sender_log_path, file_name=file_name):
                     self.logger.error(f"Failed to decompress file {file_name}")
-                    self.cleanup_processes([self.pids.get('tcpdump'), self.pids.get('itgrecv')])           
+                    self.cleanup_processes(
+                        [self.pids.get('tcpdump'), self.pids.get('itgrecv')])
 
     def cleanup_processes(self, processes):
         self.handle_stage(
@@ -169,7 +185,7 @@ class Stage:
             self.process_manager.run_process,
             "cleanup",
             processes=processes,
-            ssh_pass=self.receiver_ssh_pw) 
+            ssh_pass=self.receiver_ssh_pw)
 
     def run(self):
         self.setup()
@@ -192,15 +208,18 @@ class Stage:
             receiver_dir=self.receiver_dir)
 
         if not self.handle_stage(f"Starting {self.test_type} Test", self.suite.run):
-            self.cleanup_processes([self.pids.get('tcpdump'), self.pids.get('itgrecv')])
+            self.cleanup_processes(
+                [self.pids.get('tcpdump'), self.pids.get('itgrecv')])
             return
 
-        self.cleanup_processes([self.pids.get('tcpdump'), self.pids.get('itgrecv')])
+        self.cleanup_processes(
+            [self.pids.get('tcpdump'), self.pids.get('itgrecv')])
         sftp_client = self.client.open_sftp()
         download_file = ["receiver.log", self.tcpdump_file]
         self.archive_and_download(sftp_client, download_file)
 
-        self.cleanup_processes([self.pids.get('tcpdump'), self.pids.get('itgrecv')])
+        self.cleanup_processes(
+            [self.pids.get('tcpdump'), self.pids.get('itgrecv')])
         self.client.close()
 
         if not self.handle_stage(
@@ -208,7 +227,7 @@ class Stage:
             self.process_manager.run_process,
             "parse",
             sender_dir=self.sender_dir,
-            sender_log_path=self.sender_log_path):
+                sender_log_path=self.sender_log_path):
             return
 
         self.logger.debug("Successfully Test Finish")
