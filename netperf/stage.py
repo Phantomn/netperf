@@ -6,14 +6,14 @@ from proc_manager import ProcessManager
 from suite import Suite
 
 class Stage:
-    def __init__(self, arch, sender_ssh_pw, receiver_ip, receiver_ssh_id, receiver_ssh_pw, test):
+    def __init__(self, arch, sender_ssh_pw, receiver_ip, test_type, receiver_ssh_id, receiver_ssh_pw):
         self.arch = arch
         self.sender_ssh_pw = sender_ssh_pw
         self.receiver_ip = receiver_ip
         self.receiver_ssh_id = receiver_ssh_id
         self.receiver_ssh_pw = receiver_ssh_pw
-        self.test = test
-        self.tcpdump_file = f"{test}.pcap"
+        self.test_type = test_type
+        self.tcpdump_file = f"{test_type}.pcap"
         self.sender_dir = get_path(None, None)
         self.timestamp = time.strftime("%Y%m%d")
         self.client = SSHClient(self.receiver_ip, self.receiver_ssh_id, self.receiver_ssh_pw)
@@ -23,7 +23,7 @@ class Stage:
         self.sender_ip = get_nic_ip()
         self.receiver_nic, self.receiver_mac = get_nic_info(self.client, True)
         self.receiver_dir = get_path(self.client, True)
-        self.suite = Suite(self.sender_nic, self.sender_mac, self.sender_ip, self.receiver_mac, self.receiver_ip)
+        self.suite = Suite(self.sender_nic, self.sender_mac, self.sender_ip, self.receiver_mac, self.receiver_ip, self.test_type)
 
         self.pids = {}
         self.privileges = {}
@@ -35,7 +35,7 @@ class Stage:
 
     def setup_logging(self):
         import logging
-        Logger.configure(self.sender_log_path, self.test, logging.DEBUG)
+        Logger.configure(self.sender_log_path, self.test_type, logging.DEBUG)
         self.logger = Logger.getLogger()
 
     def setup(self):
@@ -191,7 +191,7 @@ class Stage:
             sender_log_path=self.sender_log_path,
             receiver_dir=self.receiver_dir)
 
-        if not self.handle_stage(f"Starting {self.test} Test", self.suite.run):
+        if not self.handle_stage(f"Starting {self.test_type} Test", self.suite.run):
             self.cleanup_processes([self.pids.get('tcpdump'), self.pids.get('itgrecv')])
             return
 
@@ -204,7 +204,7 @@ class Stage:
         self.client.close()
 
         if not self.handle_stage(
-            f"Parsing {self.test} Test",
+            f"Parsing {self.test_type} Test",
             self.process_manager.run_process,
             "parse",
             sender_dir=self.sender_dir,

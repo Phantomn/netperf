@@ -1,10 +1,11 @@
 from tqdm import tqdm
-from scapy.all import Ether, IP, TCP, sr1, send, sendp, conf
+from scapy.all import Ether, IP, TCP, UDP, ICMP, ARP, sr1, sendp, conf, RandString, Raw
 import time
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from util import Logger
+
 
 
 class Suite:
@@ -16,6 +17,7 @@ class Suite:
         self.dst_ip = dst_ip
         self.duration = duration
         self.rate_limit = rate_limit
+        self.test_type = test_type
         self.test_type = test_type
         self.open_ports = []
         self.open_ports_lock = threading.Lock()
@@ -33,7 +35,7 @@ class Suite:
             response = sr1(pkt, timeout=0.5, verbose=0)
             if response and response.haslayer(TCP) and response.getlayer(TCP).flags == 0x12:
                 with self.open_ports_lock:
-                    self.open_ports.extend(port)
+                    self.open_ports.append(port)
             send(IP(dst=self.dst_ip) / TCP(dport=port, flags='R'), verbose=0)
         except Exception as e:
             self.logger.error(f"Error scanning port {port}: {e}")
@@ -56,12 +58,10 @@ class Suite:
         ip_frame = IP(src=self.src_ip, dst=self.dst_ip)
 
         if protocol == "tcp":
-            tcp_frame = TCP(sport=random.randint(1024, 65535),
-                            dport=port or random.randint(1, 65535), flags="S")
+            tcp_frame = TCP(sport=random.randint(1024, 65535), dport=port or random.randint(1, 65535), flags="S")
             return eth_frame / ip_frame / tcp_frame
         elif protocol == "udp":
-            udp_frame = UDP(sport=random.randint(1024, 65535),
-                            dport=port or random.randint(1, 65535))
+            udp_frame = UDP(sport=random.randint(1024, 65535), dport=port or random.randint(1, 65535))
             return eth_frame / ip_frame / udp_frame / Raw(load=RandString(size=packet_length-(len(eth_frame)+len(ip_frame)+len(udp_frame))))
         elif protocol == "icmp":
             icmp_frame = ICMP()
@@ -83,16 +83,19 @@ class Suite:
 
                 if self.test_type == "scan":
                     for port in self.open_ports:
-                        packet = self.generate_packet(
-                            protocol="tcp", port=port)
+                        packet = self.generate_packet(protocol="tcp", port=port)
                         sendp(packet, iface=self.iface, verbose=0)
                         count += 1
                 elif self.test_type == "storm":
-                    packet = self.generate_packet(
-                        protocol="tcp")  # TCP 패킷을 무작위로 생성
+                    packet = self.generate_packet(protocol="tcp")  # TCP 패킷을 무작위로 생성
                     sendp(packet, iface=self.iface, verbose=0)
                     count += 1
 
+                if count >= self.rate_limit:
+                    elapsed_time = time.time() - start_time
+                    remaining_time = max(0, 1 - elapsed_time % 1)
+                    time.sleep(remaining_time)
+                    count = 0
                 if count >= self.rate_limit:
                     elapsed_time = time.time() - start_time
                     remaining_time = max(0, 1 - elapsed_time % 1)
@@ -111,6 +114,18 @@ class Suite:
         self.logger.info(f"Performing {self.test_type.capitalize()} Test...")
         if not self.perform_test():
             self.logger.error("Failed to perform test")
+        if self.test_type == "scan":
+            self.logger.info("Discovering open ports...")
+            self.discover_open_ports(7000, 9000)
+            if not self.open_ports:
+                self.logger.info("No open ports discovered. Exiting.")
+                return False
+            self.logger.info(f"Open ports discovered: {self.open_ports}")
+
+        self.logger.info(f"Performing {self.test_type.capitalize()} Test...")
+        if not self.perform_test():
+            self.logger.error("Failed to perform test")
             return False
+
 
         return True
