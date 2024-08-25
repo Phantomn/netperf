@@ -6,8 +6,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from util import Logger
 
+
 class Suite:
-    def __init__(self, iface, src_mac, src_ip, dst_mac, dst_ip, duration=5, rate_limit=14880):
+    def __init__(self, iface, src_mac, src_ip, dst_mac, dst_ip, test_type, duration=5, rate_limit=14880):
         self.iface = iface
         self.src_mac = src_mac
         self.src_ip = src_ip
@@ -15,6 +16,7 @@ class Suite:
         self.dst_ip = dst_ip
         self.duration = duration
         self.rate_limit = rate_limit
+        self.test_type = test_type
         self.open_ports = []
         self.open_ports_lock = threading.Lock()
         self.logger = Logger.getLogger()
@@ -49,44 +51,66 @@ class Suite:
                     future.result()
                     progress_bar.update(self.chunk_size)
 
-    def gen_packet(self, dst_port):
+    def gen_packet(self, protocol="tcp", port=None, packet_length=60):
         eth_frame = Ether(src=self.src_mac, dst=self.dst_mac)
         ip_frame = IP(src=self.src_ip, dst=self.dst_ip)
-        tcp_frame = TCP(sport=random.randint(1024, 65535), dport=dst_port, flags="S")
-        packet = eth_frame / ip_frame / tcp_frame
-        return packet
+
+        if protocol == "tcp":
+            tcp_frame = TCP(sport=random.randint(1024, 65535),
+                            dport=port or random.randint(1, 65535), flags="S")
+            return eth_frame / ip_frame / tcp_frame
+        elif protocol == "udp":
+            udp_frame = UDP(sport=random.randint(1024, 65535),
+                            dport=port or random.randint(1, 65535))
+            return eth_frame / ip_frame / udp_frame / Raw(load=RandString(size=packet_length-(len(eth_frame)+len(ip_frame)+len(udp_frame))))
+        elif protocol == "icmp":
+            icmp_frame = ICMP()
+            return eth_frame / ip_frame / icmp_frame
+        elif protocol == "arp":
+            arp_frame = ARP(pdst=self.dst_ip)
+            return eth_frame / arp_frame
+        else:
+            raise ValueError(f"Unsupported protocol: {protocol}")
 
     def perform_test(self):
         start_time = time.time()
         count = 0
 
-        with tqdm(total=self.duration, unit=" s", desc="Performing Test", ncols=100, leave=False) as progress_bar:
+        with tqdm(total=self.duration, unit=" s", desc=f"Performing {self.test_type.capitalize()} Test", ncols=100, leave=False) as progress_bar:
             while time.time() - start_time < self.duration:
                 elapsed_time = int(time.time() - start_time)
                 progress_bar.update(elapsed_time - progress_bar.n)
 
-                for port in self.open_ports:
-                    for adj_port in (port, port - 1, port + 1):
-                        if 1 <= adj_port <= 65535:
-                            pkt = self.gen_packet(port)
-                            sendp(pkt, iface=self.iface, verbose=0)
-                            count += 1
+                if self.test_type == "scan":
+                    for port in self.open_ports:
+                        packet = self.generate_packet(
+                            protocol="tcp", port=port)
+                        sendp(packet, iface=self.iface, verbose=0)
+                        count += 1
+                elif self.test_type == "storm":
+                    packet = self.generate_packet(
+                        protocol="tcp")  # TCP 패킷을 무작위로 생성
+                    sendp(packet, iface=self.iface, verbose=0)
+                    count += 1
 
-                            if count >= self.rate_limit:
-                                elapsed_time = time.time() - start_time
-                                remaining_time = max(0, 1 - elapsed_time % 1)
-                                time.sleep(remaining_time)
-                                count = 0
+                if count >= self.rate_limit:
+                    elapsed_time = time.time() - start_time
+                    remaining_time = max(0, 1 - elapsed_time % 1)
+                    time.sleep(remaining_time)
+                    count = 0
 
     def run(self):
-        self.logger.info("Discovering open ports...")
-        self.discover_open_ports(7000, 9000)
-        if not self.open_ports:
-            self.logger.info("No open ports discovered. Exiting.")
+        if self.test_type == "scan":
+            self.logger.info("Discovering open ports...")
+            self.discover_open_ports(7000, 9000)
+            if not self.open_ports:
+                self.logger.info("No open ports discovered. Exiting.")
+                return False
+            self.logger.info(f"Open ports discovered: {self.open_ports}")
+
+        self.logger.info(f"Performing {self.test_type.capitalize()} Test...")
+        if not self.perform_test():
+            self.logger.error("Failed to perform test")
             return False
-        self.logger.info(f"Open ports discovered: {self.open_ports}")
-        self.logger.info("Performing Test...")
-        if self.perform_test():
-            self.logger.error("Failed perform Test")
-            return False
+
         return True
